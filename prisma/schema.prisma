@@ -1,0 +1,283 @@
+// prisma/schema.prisma
+// ミニマムプロトタイプ版 - 9テーブル
+// ✅ React 19.0.1 + Next.js 15.5.7 完全対応
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ========================================
+// Enum定義
+// ========================================
+
+enum MemberRole {
+  ADMIN       // 工務店管理者
+  GENERAL     // 一般担当者
+}
+
+enum AdminRole {
+  SUPER_ADMIN // システム管理者
+  ADMIN       // 管理者
+}
+
+enum InquiryStatus {
+  NEW           // 新規
+  IN_PROGRESS   // 対応中
+  RESOLVED      // 解決済み
+  CLOSED        // クローズ
+}
+
+enum PostStatus {
+  DRAFT       // 下書き
+  PUBLISHED   // 公開中
+}
+
+enum TagCategory {
+  HOUSE_TYPE      // 家タイプ（注文住宅、リフォーム等）
+  PRICE_RANGE     // 価格帯
+  STRUCTURE       // 構造・形態
+  ATMOSPHERE      // デザインイメージ
+  PREFERENCE      // こだわり
+}
+
+// ========================================
+// 1. 管理者（Admin）
+// ========================================
+
+model Admin {
+  id          Int       @id @default(autoincrement())
+  authId      String    @unique  // Supabase Auth UUID
+  email       String    @unique
+  name        String
+  role        AdminRole @default(ADMIN)
+  isActive    Boolean   @default(true)
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("admins")
+  @@index([authId])
+  @@index([email])
+}
+
+// ========================================
+// 2. 工務店（Company）- 簡略化
+// ========================================
+
+model Company {
+  id              Int       @id @default(autoincrement())
+  name            String
+  description     String?   @db.Text
+  
+  // 連絡先情報
+  address         String
+  prefecture      String
+  city            String
+  phoneNumber     String
+  email           String    @unique
+  websiteUrl      String?
+  
+  // 画像（1枚のみ）
+  logoUrl         String?
+  
+  // 公開状態
+  isPublished     Boolean   @default(false)
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // リレーション
+  members         Member[]
+  cases           ConstructionCase[]
+  inquiries       Inquiry[]
+  tags            CompanyTag[]
+
+  @@map("companies")
+  @@index([isPublished])
+  @@index([prefecture])
+}
+
+// ========================================
+// 3. 工務店担当者（Member）
+// ========================================
+
+model Member {
+  id          Int        @id @default(autoincrement())
+  authId      String     @unique  // Supabase Auth UUID
+  email       String     @unique
+  name        String
+  role        MemberRole @default(GENERAL)
+  companyId   Int
+  company     Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  isActive    Boolean    @default(true)
+  lastLoginAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // リレーション
+  cases       ConstructionCase[]
+
+  @@map("members")
+  @@index([authId])
+  @@index([companyId])
+}
+
+// ========================================
+// 4. 顧客（Customer）
+// ========================================
+
+model Customer {
+  id          Int       @id @default(autoincrement())
+  authId      String    @unique  // Supabase Auth UUID
+  email       String    @unique
+  lastName    String?
+  firstName   String?
+  phoneNumber String?
+  isActive    Boolean   @default(true)
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // リレーション
+  inquiries   Inquiry[]
+
+  @@map("customers")
+  @@index([authId])
+}
+
+// ========================================
+// 5. 施工事例（ConstructionCase）- 簡略化
+// ========================================
+
+model ConstructionCase {
+  id            Int        @id @default(autoincrement())
+  companyId     Int
+  company       Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  authorId      Int
+  author        Member     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  // 基本情報
+  title         String
+  description   String     @db.Text
+  
+  // 物件情報（簡略化 - 別テーブルにしない）
+  prefecture    String
+  city          String
+  buildingArea  Float?     // 延床面積（㎡）
+  budget        Int?       // 予算（円）
+  completionYear Int?      // 竣工年
+  
+  // 画像（1枚のみ）
+  mainImageUrl  String?
+  
+  // 公開状態
+  status        PostStatus @default(DRAFT)
+  viewCount     Int        @default(0)
+  publishedAt   DateTime?
+  
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  // リレーション
+  tags          ConstructionCaseTag[]
+
+  @@map("construction_cases")
+  @@index([companyId])
+  @@index([status])
+  @@index([publishedAt])
+}
+
+// ========================================
+// 6. タグ（Tag）- 最小限
+// ========================================
+
+model Tag {
+  id            Int         @id @default(autoincrement())
+  name          String      @unique
+  category      TagCategory
+  displayOrder  Int         @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  // リレーション
+  companies     CompanyTag[]
+  cases         ConstructionCaseTag[]
+
+  @@map("tags")
+  @@index([category])
+}
+
+// ========================================
+// 7. 工務店タグ（CompanyTag）
+// ========================================
+
+model CompanyTag {
+  id        Int      @id @default(autoincrement())
+  companyId Int
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  tagId     Int
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([companyId, tagId])
+  @@map("company_tags")
+  @@index([companyId])
+  @@index([tagId])
+}
+
+// ========================================
+// 8. 施工事例タグ（ConstructionCaseTag）
+// ========================================
+
+model ConstructionCaseTag {
+  id     Int              @id @default(autoincrement())
+  caseId Int
+  case   ConstructionCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  tagId  Int
+  tag    Tag              @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
+
+  @@unique([caseId, tagId])
+  @@map("construction_case_tags")
+  @@index([caseId])
+  @@index([tagId])
+}
+
+// ========================================
+// 9. 問い合わせ（Inquiry）
+// ========================================
+
+model Inquiry {
+  id            Int           @id @default(autoincrement())
+  
+  // 問い合わせ元
+  customerId    Int?
+  customer      Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  inquirerName  String
+  inquirerEmail String
+  inquirerPhone String?
+  
+  // 問い合わせ先
+  companyId     Int
+  company       Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  // 内容
+  message       String        @db.Text
+  status        InquiryStatus @default(NEW)
+  
+  // 対応情報
+  respondedAt   DateTime?
+  internalNotes String?       @db.Text
+  
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@map("inquiries")
+  @@index([customerId])
+  @@index([companyId])
+  @@index([status])
+}
