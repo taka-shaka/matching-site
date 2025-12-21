@@ -4,7 +4,7 @@
 // ⚠️ クライアントコンポーネントでは auth-provider.ts を使用してください
 
 import { redirect } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, User } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "./supabase";
 import { prisma } from "./prisma";
 
@@ -47,11 +47,13 @@ export async function getCurrentUser() {
 // ユーザータイプ取得
 // ========================================
 
-export function getUserType(user: any): "admin" | "member" | "customer" | null {
+export function getUserType(
+  user: User
+): "admin" | "member" | "customer" | null {
   return user?.app_metadata?.user_type || null;
 }
 
-export function getCompanyId(user: any): number | null {
+export function getCompanyId(user: User): number | null {
   return user?.app_metadata?.company_id || null;
 }
 

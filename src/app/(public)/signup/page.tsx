@@ -64,7 +64,7 @@ export default function SignupPage() {
           router.refresh();
         }, 3000);
       }
-    } catch (err) {
+    } catch {
       setError("登録に失敗しました");
     } finally {
       setIsLoading(false);

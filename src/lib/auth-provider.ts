@@ -5,7 +5,7 @@
 "use client";
 
 import { createSupabaseBrowserClient } from "./supabase";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient, User, Session } from "@supabase/supabase-js";
 
 // ========================================
 // 共通型定義
@@ -17,7 +17,7 @@ export interface AuthUser {
   emailVerified?: boolean;
   userType?: "admin" | "member" | "customer";
   companyId?: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface AuthSession {
@@ -36,7 +36,7 @@ export interface SignUpParams {
   email: string;
   password: string;
   userType?: "admin" | "member" | "customer";
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // ========================================
@@ -260,7 +260,7 @@ class SupabaseAuthProvider implements AuthProvider {
   // ヘルパー関数
   // ========================================
 
-  private mapUser(supabaseUser: any): AuthUser {
+  private mapUser(supabaseUser: User): AuthUser {
     return {
       id: supabaseUser.id,
       email: supabaseUser.email!,
@@ -271,7 +271,7 @@ class SupabaseAuthProvider implements AuthProvider {
     };
   }
 
-  private mapSession(supabaseSession: any): AuthSession {
+  private mapSession(supabaseSession: Session): AuthSession {
     return {
       user: this.mapUser(supabaseSession.user),
       accessToken: supabaseSession.access_token,
@@ -285,7 +285,7 @@ class SupabaseAuthProvider implements AuthProvider {
 // ========================================
 
 class ClerkAuthProvider implements AuthProvider {
-  async signIn(email: string, password: string): Promise<AuthResult> {
+  async signIn(_email: string, _password: string): Promise<AuthResult> {
     // TODO: Clerk実装
     // import { useSignIn } from '@clerk/nextjs'
     throw new Error(
@@ -293,7 +293,7 @@ class ClerkAuthProvider implements AuthProvider {
     );
   }
 
-  async signUp(params: SignUpParams): Promise<AuthResult> {
+  async signUp(_params: SignUpParams): Promise<AuthResult> {
     throw new Error("Clerk provider not implemented yet");
   }
 
@@ -309,11 +309,11 @@ class ClerkAuthProvider implements AuthProvider {
     throw new Error("Clerk provider not implemented yet");
   }
 
-  async resetPassword(email: string): Promise<void> {
+  async resetPassword(_email: string): Promise<void> {
     throw new Error("Clerk provider not implemented yet");
   }
 
-  async updatePassword(newPassword: string): Promise<void> {
+  async updatePassword(_newPassword: string): Promise<void> {
     throw new Error("Clerk provider not implemented yet");
   }
 
@@ -322,12 +322,12 @@ class ClerkAuthProvider implements AuthProvider {
   }
 
   async signInWithOAuth(
-    provider: "google" | "facebook" | "github"
+    _provider: "google" | "facebook" | "github"
   ): Promise<void> {
     throw new Error("Clerk provider not implemented yet");
   }
 
-  onAuthStateChange(callback: (user: AuthUser | null) => void): () => void {
+  onAuthStateChange(_callback: (user: AuthUser | null) => void): () => void {
     throw new Error("Clerk provider not implemented yet");
   }
 }

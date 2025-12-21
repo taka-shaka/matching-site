@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 
 // ✅ Next.js 15: params は Promise型
 interface PageProps {
@@ -47,15 +48,15 @@ export default async function CaseDetailPage({ params }: PageProps) {
         <nav className="mb-8">
           <ol className="flex items-center space-x-2 text-sm">
             <li>
-              <a href="/" className="text-blue-600 hover:text-blue-800">
+              <Link href="/" className="text-blue-600 hover:text-blue-800">
                 ホーム
-              </a>
+              </Link>
             </li>
             <li className="text-gray-400">/</li>
             <li>
-              <a href="/cases" className="text-blue-600 hover:text-blue-800">
+              <Link href="/cases" className="text-blue-600 hover:text-blue-800">
                 施工事例
-              </a>
+              </Link>
             </li>
             <li className="text-gray-400">/</li>
             <li className="text-gray-600">{case_.title || "詳細"}</li>
@@ -186,12 +187,12 @@ export default async function CaseDetailPage({ params }: PageProps) {
                     {case_.company.prefecture} {case_.company.city}
                   </p>
                 </div>
-                <a
+                <Link
                   href={`/companies/${case_.company.id}`}
                   className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
                 >
                   会社詳細を見る
-                </a>
+                </Link>
               </div>
             </div>
           </div>

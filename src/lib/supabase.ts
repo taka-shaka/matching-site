@@ -4,7 +4,7 @@
 
 import { createBrowserClient } from "@supabase/ssr";
 import { createServerClient } from "@supabase/ssr";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, User } from "@supabase/supabase-js";
 
 // 環境変数チェック
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
@@ -96,14 +96,14 @@ export interface UserMetadata {
 /**
  * Supabase AuthユーザーからユーザータイプMemberを取得
  */
-export function getUserType(user: any): UserType | null {
+export function getUserType(user: User): UserType | null {
   return user?.app_metadata?.user_type || null;
 }
 
 /**
  * Supabase AuthユーザーからCompany IDを取得（Memberの場合）
  */
-export function getCompanyId(user: any): number | null {
+export function getCompanyId(user: User): number | null {
   return user?.app_metadata?.company_id || null;
 }
 

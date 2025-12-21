@@ -6,7 +6,9 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\""
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.1.0",
@@ -14,6 +16,7 @@
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.87.1",
     "dotenv": "^17.2.3",
+    "lucide-react": "^0.561.0",
     "next": "15.5.7",
     "pg": "^8.16.3",
     "react": "19.1.0",
@@ -28,6 +31,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.5.7",
+    "prettier": "^3.7.4",
     "prisma": "^7.1.0",
     "tailwindcss": "^4",
     "typescript": "^5"
