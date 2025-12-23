@@ -1,10 +1,9 @@
-// src/app/member/cases/new/page.tsx
-// メンバー（工務店）施工事例新規作成ページ（UI実装 - モックデータ使用）
+// src/app/member/company/page.tsx
+// メンバー（工務店）自社情報管理ページ（UI実装 - モックデータ使用）
 
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Building2,
@@ -13,14 +12,16 @@ import {
   MessageSquare,
   Settings,
   LogOut,
-  ArrowLeft,
   Save,
-  Eye,
   Upload,
   X,
-  Plus,
   Menu,
   AlertCircle,
+  Phone,
+  Mail,
+  Globe,
+  MapPin,
+  Camera,
 } from "lucide-react";
 
 // モックデータ
@@ -38,36 +39,23 @@ const MOCK_MEMBER = {
   },
 };
 
-// 利用可能なタグ（Prismaスキーマに準拠）
-const AVAILABLE_TAGS = [
-  { id: 1, name: "平屋", category: "HOUSE_TYPE" },
-  { id: 2, name: "2階建て", category: "HOUSE_TYPE" },
-  { id: 3, name: "3階建て", category: "HOUSE_TYPE" },
-  { id: 4, name: "二世帯", category: "HOUSE_TYPE" },
-  { id: 5, name: "2000万円未満", category: "PRICE_RANGE" },
-  { id: 6, name: "2000-3000万円", category: "PRICE_RANGE" },
-  { id: 7, name: "3000-4000万円", category: "PRICE_RANGE" },
-  { id: 8, name: "4000-5000万円", category: "PRICE_RANGE" },
-  { id: 9, name: "5000万円以上", category: "PRICE_RANGE" },
-  { id: 10, name: "木造", category: "STRUCTURE" },
-  { id: 11, name: "鉄骨", category: "STRUCTURE" },
-  { id: 12, name: "RC造", category: "STRUCTURE" },
-  { id: 13, name: "モダン", category: "ATMOSPHERE" },
-  { id: 14, name: "和モダン", category: "ATMOSPHERE" },
-  { id: 15, name: "ナチュラル", category: "ATMOSPHERE" },
-  { id: 16, name: "北欧", category: "ATMOSPHERE" },
-  { id: 17, name: "開放感", category: "PREFERENCE" },
-  { id: 18, name: "省エネ", category: "PREFERENCE" },
-  { id: 19, name: "バリアフリー", category: "PREFERENCE" },
-  { id: 20, name: "収納充実", category: "PREFERENCE" },
-];
-
-const TAG_CATEGORIES = {
-  HOUSE_TYPE: "住宅タイプ",
-  PRICE_RANGE: "価格帯",
-  STRUCTURE: "構造",
-  ATMOSPHERE: "雰囲気",
-  PREFERENCE: "こだわり",
+// 会社情報モックデータ（Prismaスキーマに準拠）
+const MOCK_COMPANY_DATA = {
+  id: 1,
+  name: "株式会社ナゴヤホーム",
+  description:
+    "愛知県を中心に、お客様の理想の住まいづくりをサポートしています。自然素材を活かした快適な住空間の提案を得意としており、創業以来30年の実績があります。",
+  address: "愛知県名古屋市中区錦3-15-15",
+  prefecture: "愛知県",
+  city: "名古屋市中区",
+  phoneNumber: "052-123-4567",
+  email: "info@nagoya-home.co.jp",
+  websiteUrl: "https://nagoya-home.co.jp",
+  logoUrl: "https://placehold.co/400x400/f97316/white?text=Logo",
+  mainImageUrl: "https://placehold.co/1200x600/ea580c/white?text=Company+Image",
+  establishedYear: 1994,
+  employeeCount: 25,
+  businessHours: "9:00 - 18:00（定休日：水曜日）",
 };
 
 const PREFECTURES = [
@@ -120,82 +108,77 @@ const PREFECTURES = [
   "沖縄県",
 ];
 
-export default function NewCasePage() {
-  const router = useRouter();
+export default function CompanyPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // フォームの状態
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [prefecture, setPrefecture] = useState("");
-  const [city, setCity] = useState("");
-  const [buildingArea, setBuildingArea] = useState("");
-  const [budget, setBudget] = useState("");
-  const [completionYear, setCompletionYear] = useState("");
-  const [selectedTags, setSelectedTags] = useState<number[]>([]);
-  const [mainImageUrl, setMainImageUrl] = useState("");
-  const [additionalImages, setAdditionalImages] = useState<string[]>([]);
-  const [status, setStatus] = useState<"DRAFT" | "PUBLISHED">("DRAFT");
+  const [name, setName] = useState(MOCK_COMPANY_DATA.name);
+  const [description, setDescription] = useState(MOCK_COMPANY_DATA.description);
+  const [address, setAddress] = useState(MOCK_COMPANY_DATA.address);
+  const [prefecture, setPrefecture] = useState(MOCK_COMPANY_DATA.prefecture);
+  const [city, setCity] = useState(MOCK_COMPANY_DATA.city);
+  const [phoneNumber, setPhoneNumber] = useState(MOCK_COMPANY_DATA.phoneNumber);
+  const [email, setEmail] = useState(MOCK_COMPANY_DATA.email);
+  const [websiteUrl, setWebsiteUrl] = useState(MOCK_COMPANY_DATA.websiteUrl);
+  const [logoUrl, setLogoUrl] = useState(MOCK_COMPANY_DATA.logoUrl);
+  const [mainImageUrl, setMainImageUrl] = useState(
+    MOCK_COMPANY_DATA.mainImageUrl
+  );
+  const [establishedYear, setEstablishedYear] = useState(
+    String(MOCK_COMPANY_DATA.establishedYear)
+  );
+  const [employeeCount, setEmployeeCount] = useState(
+    String(MOCK_COMPANY_DATA.employeeCount)
+  );
+  const [businessHours, setBusinessHours] = useState(
+    MOCK_COMPANY_DATA.businessHours
+  );
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   function handleLogout() {
     window.location.href = "/member/login";
   }
 
-  function toggleTag(tagId: number) {
-    if (selectedTags.includes(tagId)) {
-      setSelectedTags(selectedTags.filter((id) => id !== tagId));
-    } else {
-      setSelectedTags([...selectedTags, tagId]);
-    }
-  }
-
-  function handleAddImage() {
-    // TODO: 実際の画像アップロード処理はAPI実装時に追加
-    // モックとしてプレースホルダー画像を追加
-    const newImageUrl = `https://placehold.co/800x600/f97316/white?text=Image+${additionalImages.length + 1}`;
-    setAdditionalImages([...additionalImages, newImageUrl]);
-  }
-
-  function handleRemoveImage(index: number) {
-    setAdditionalImages(additionalImages.filter((_, i) => i !== index));
-  }
-
   function validateForm(): boolean {
     const newErrors: Record<string, string> = {};
 
-    if (!title.trim()) newErrors.title = "タイトルは必須です";
-    if (!description.trim()) newErrors.description = "説明は必須です";
+    if (!name.trim()) newErrors.name = "会社名は必須です";
+    if (!description.trim()) newErrors.description = "会社説明は必須です";
+    if (!address.trim()) newErrors.address = "住所は必須です";
     if (!prefecture) newErrors.prefecture = "都道府県は必須です";
     if (!city.trim()) newErrors.city = "市区町村は必須です";
-    if (!buildingArea) newErrors.buildingArea = "延床面積は必須です";
-    if (!budget) newErrors.budget = "予算は必須です";
-    if (!completionYear) newErrors.completionYear = "完成年は必須です";
-    if (selectedTags.length === 0)
-      newErrors.tags = "少なくとも1つのタグを選択してください";
+    if (!phoneNumber.trim()) newErrors.phoneNumber = "電話番号は必須です";
+    if (!email.trim()) newErrors.email = "メールアドレスは必須です";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }
 
-  async function handleSubmit(saveStatus: "DRAFT" | "PUBLISHED") {
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+
     if (!validateForm()) {
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
 
-    setStatus(saveStatus);
     setIsSubmitting(true);
+    setSuccessMessage("");
 
     // TODO: 実際の保存処理はAPI実装時に追加
     // 現在はUI実装のみ - モック保存
     setTimeout(() => {
-      alert(
-        saveStatus === "DRAFT" ? "下書きとして保存しました" : "公開しました"
-      );
-      router.push("/member/cases");
+      setIsSubmitting(false);
+      setSuccessMessage("会社情報を保存しました");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+
+      // 3秒後にメッセージを消す
+      setTimeout(() => {
+        setSuccessMessage("");
+      }, 3000);
     }, 1000);
   }
 
@@ -265,7 +248,7 @@ export default function NewCasePage() {
             </Link>
             <Link
               href="/member/cases"
-              className="flex items-center gap-3 px-4 py-3 bg-linear-to-r from-red-500 to-orange-500 text-white rounded-xl shadow-lg"
+              className="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-xl hover:bg-gray-100 transition"
             >
               <FileText className="h-5 w-5" />
               <span className="font-medium">施工事例管理</span>
@@ -279,7 +262,7 @@ export default function NewCasePage() {
             </Link>
             <Link
               href="/member/company"
-              className="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-xl hover:bg-gray-100 transition"
+              className="flex items-center gap-3 px-4 py-3 bg-linear-to-r from-red-500 to-orange-500 text-white rounded-xl shadow-lg"
             >
               <Settings className="h-5 w-5" />
               <span className="font-medium">自社情報</span>
@@ -331,20 +314,38 @@ export default function NewCasePage() {
             >
               <Menu className="h-6 w-6" />
             </button>
-            <Link
-              href="/member/cases"
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-white rounded-lg transition"
-            >
-              <ArrowLeft className="h-6 w-6" />
-            </Link>
             <div>
               <h1 className="text-3xl font-black text-gray-900">
-                施工事例の新規作成
+                自社情報管理
               </h1>
-              <p className="text-gray-600 mt-1">新しい施工事例を登録します</p>
+              <p className="text-gray-600 mt-1">
+                工務店の基本情報を編集・管理できます
+              </p>
             </div>
           </div>
         </div>
+
+        {/* 成功メッセージ */}
+        {successMessage && (
+          <div className="mb-6 bg-green-50 border border-green-200 rounded-xl p-4 animate-fade-in">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                <svg
+                  className="w-5 h-5 text-green-600"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path d="M5 13l4 4L19 7"></path>
+                </svg>
+              </div>
+              <p className="font-medium text-green-900">{successMessage}</p>
+            </div>
+          </div>
+        )}
 
         {/* エラーメッセージ */}
         {Object.keys(errors).length > 0 && (
@@ -366,36 +367,36 @@ export default function NewCasePage() {
         )}
 
         {/* フォーム */}
-        <div className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {/* 基本情報 */}
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
             <h2 className="text-xl font-black text-gray-900 mb-6">基本情報</h2>
 
-            {/* タイトル */}
+            {/* 会社名 */}
             <div className="mb-6">
               <label className="block text-sm font-bold text-gray-700 mb-2">
-                タイトル <span className="text-red-600">*</span>
+                会社名 <span className="text-red-600">*</span>
               </label>
               <input
                 type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="例：自然素材にこだわった平屋の家"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="例：株式会社ナゴヤホーム"
                 className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition ${
-                  errors.title ? "border-red-500" : "border-gray-300"
+                  errors.name ? "border-red-500" : "border-gray-300"
                 }`}
               />
             </div>
 
-            {/* 説明 */}
+            {/* 会社説明 */}
             <div className="mb-6">
               <label className="block text-sm font-bold text-gray-700 mb-2">
-                説明 <span className="text-red-600">*</span>
+                会社説明 <span className="text-red-600">*</span>
               </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="施工事例の詳細な説明を入力してください"
+                placeholder="会社の特徴や強みを入力してください"
                 rows={6}
                 className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition resize-none ${
                   errors.description ? "border-red-500" : "border-gray-300"
@@ -403,7 +404,59 @@ export default function NewCasePage() {
               />
             </div>
 
-            {/* 所在地 */}
+            {/* 創業年・従業員数 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">
+                  創業年
+                </label>
+                <input
+                  type="number"
+                  value={establishedYear}
+                  onChange={(e) => setEstablishedYear(e.target.value)}
+                  placeholder="1994"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">
+                  従業員数
+                </label>
+                <input
+                  type="number"
+                  value={employeeCount}
+                  onChange={(e) => setEmployeeCount(e.target.value)}
+                  placeholder="25"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 連絡先情報 */}
+          <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+            <h2 className="text-xl font-black text-gray-900 mb-6">
+              連絡先情報
+            </h2>
+
+            {/* 住所 */}
+            <div className="mb-6">
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                <MapPin className="inline h-4 w-4 mr-1" />
+                住所 <span className="text-red-600">*</span>
+              </label>
+              <input
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="例：愛知県名古屋市中区錦3-15-15"
+                className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition ${
+                  errors.address ? "border-red-500" : "border-gray-300"
+                }`}
+              />
+            </div>
+
+            {/* 都道府県・市区町村 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">
@@ -440,128 +493,117 @@ export default function NewCasePage() {
               </div>
             </div>
 
-            {/* 延床面積・予算・完成年 */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* 電話番号・メール */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">
-                  延床面積 (㎡) <span className="text-red-600">*</span>
+                  <Phone className="inline h-4 w-4 mr-1" />
+                  電話番号 <span className="text-red-600">*</span>
                 </label>
                 <input
-                  type="number"
-                  step="0.1"
-                  value={buildingArea}
-                  onChange={(e) => setBuildingArea(e.target.value)}
-                  placeholder="95.5"
+                  type="tel"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  placeholder="052-123-4567"
                   className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition ${
-                    errors.buildingArea ? "border-red-500" : "border-gray-300"
+                    errors.phoneNumber ? "border-red-500" : "border-gray-300"
                   }`}
                 />
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">
-                  予算 (万円) <span className="text-red-600">*</span>
+                  <Mail className="inline h-4 w-4 mr-1" />
+                  メールアドレス <span className="text-red-600">*</span>
                 </label>
                 <input
-                  type="number"
-                  value={budget}
-                  onChange={(e) => setBudget(e.target.value)}
-                  placeholder="3500"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="info@nagoya-home.co.jp"
                   className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition ${
-                    errors.budget ? "border-red-500" : "border-gray-300"
+                    errors.email ? "border-red-500" : "border-gray-300"
                   }`}
+                />
+              </div>
+            </div>
+
+            {/* ウェブサイト・営業時間 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">
+                  <Globe className="inline h-4 w-4 mr-1" />
+                  ウェブサイトURL
+                </label>
+                <input
+                  type="url"
+                  value={websiteUrl}
+                  onChange={(e) => setWebsiteUrl(e.target.value)}
+                  placeholder="https://nagoya-home.co.jp"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition"
                 />
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">
-                  完成年 <span className="text-red-600">*</span>
+                  営業時間
                 </label>
                 <input
-                  type="number"
-                  value={completionYear}
-                  onChange={(e) => setCompletionYear(e.target.value)}
-                  placeholder="2024"
-                  className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition ${
-                    errors.completionYear ? "border-red-500" : "border-gray-300"
-                  }`}
+                  type="text"
+                  value={businessHours}
+                  onChange={(e) => setBusinessHours(e.target.value)}
+                  placeholder="9:00 - 18:00（定休日：水曜日）"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition"
                 />
               </div>
             </div>
           </div>
 
-          {/* タグ選択 */}
-          <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-            <h2 className="text-xl font-black text-gray-900 mb-2">
-              タグ <span className="text-red-600">*</span>
-            </h2>
-            <p className="text-sm text-gray-600 mb-6">
-              施工事例の特徴を表すタグを選択してください（複数選択可）
-            </p>
-
-            {errors.tags && (
-              <p className="text-sm text-red-600 mb-4">{errors.tags}</p>
-            )}
-
-            {Object.entries(TAG_CATEGORIES).map(([category, label]) => (
-              <div key={category} className="mb-6 last:mb-0">
-                <h3 className="text-sm font-bold text-gray-700 mb-3">
-                  {label}
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {AVAILABLE_TAGS.filter(
-                    (tag) => tag.category === category
-                  ).map((tag) => (
-                    <button
-                      key={tag.id}
-                      type="button"
-                      onClick={() => toggleTag(tag.id)}
-                      className={`px-4 py-2 text-sm font-medium rounded-full transition ${
-                        selectedTags.includes(tag.id)
-                          ? "bg-red-600 text-white shadow-lg"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      }`}
-                    >
-                      {tag.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-
           {/* 画像 */}
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-            <h2 className="text-xl font-black text-gray-900 mb-2">画像</h2>
-            <p className="text-sm text-gray-600 mb-6">
-              施工事例の写真を追加してください
-            </p>
+            <h2 className="text-xl font-black text-gray-900 mb-6">
+              <Camera className="inline h-6 w-6 mr-2" />
+              画像
+            </h2>
+
+            {/* ロゴ */}
+            <div className="mb-6">
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                会社ロゴ
+              </label>
+              <div className="flex items-center gap-6">
+                {logoUrl && (
+                  <img
+                    src={logoUrl}
+                    alt="会社ロゴ"
+                    className="w-32 h-32 object-cover rounded-xl border-2 border-gray-200"
+                  />
+                )}
+                <div className="flex-1">
+                  <p className="text-sm text-gray-600 mb-3">
+                    推奨サイズ: 400 x 400px (正方形)
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setLogoUrl(
+                        "https://placehold.co/400x400/f97316/white?text=New+Logo"
+                      )
+                    }
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+                  >
+                    <Upload className="h-4 w-4" />
+                    <span className="font-medium">ロゴを変更（モック）</span>
+                  </button>
+                </div>
+              </div>
+            </div>
 
             {/* メイン画像 */}
-            <div className="mb-6">
+            <div>
               <label className="block text-sm font-bold text-gray-700 mb-2">
                 メイン画像
               </label>
-              <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-red-500 transition">
-                <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-sm text-gray-600 mb-2">
-                  クリックまたはドラッグ&ドロップで画像をアップロード
-                </p>
-                <p className="text-xs text-gray-500">
-                  推奨サイズ: 1200 x 800px (PNG, JPG)
-                </p>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setMainImageUrl(
-                      "https://placehold.co/1200x800/f97316/white?text=Main+Image"
-                    )
-                  }
-                  className="mt-4 px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-sm font-medium"
-                >
-                  画像を選択（モック）
-                </button>
-              </div>
-              {mainImageUrl && (
-                <div className="mt-4 relative">
+              {mainImageUrl ? (
+                <div className="relative">
                   <img
                     src={mainImageUrl}
                     alt="メイン画像"
@@ -575,70 +617,45 @@ export default function NewCasePage() {
                     <X className="h-4 w-4" />
                   </button>
                 </div>
-              )}
-            </div>
-
-            {/* 追加画像 */}
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">
-                追加画像（最大10枚）
-              </label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {additionalImages.map((imageUrl, index) => (
-                  <div key={index} className="relative">
-                    <img
-                      src={imageUrl}
-                      alt={`追加画像 ${index + 1}`}
-                      className="w-full h-32 object-cover rounded-xl"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveImage(index)}
-                      className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
-                {additionalImages.length < 10 && (
+              ) : (
+                <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-red-500 transition">
+                  <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-sm text-gray-600 mb-2">
+                    クリックまたはドラッグ&ドロップで画像をアップロード
+                  </p>
+                  <p className="text-xs text-gray-500 mb-4">
+                    推奨サイズ: 1200 x 600px
+                  </p>
                   <button
                     type="button"
-                    onClick={handleAddImage}
-                    className="h-32 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center hover:border-red-500 transition"
+                    onClick={() =>
+                      setMainImageUrl(
+                        "https://placehold.co/1200x600/f97316/white?text=Company+Image"
+                      )
+                    }
+                    className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-sm font-medium"
                   >
-                    <Plus className="h-8 w-8 text-gray-400" />
+                    画像を選択（モック）
                   </button>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* アクションボタン */}
+          {/* 保存ボタン */}
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <button
-                type="button"
-                onClick={() => handleSubmit("DRAFT")}
-                disabled={isSubmitting}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Save className="h-5 w-5" />
-                <span className="font-bold">下書き保存</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSubmit("PUBLISHED")}
-                disabled={isSubmitting}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-linear-to-r from-red-600 to-orange-600 text-white rounded-xl hover:from-red-700 hover:to-orange-700 transition shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Eye className="h-5 w-5" />
-                <span className="font-bold">
-                  {isSubmitting ? "保存中..." : "公開する"}
-                </span>
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-linear-to-r from-red-600 to-orange-600 text-white rounded-xl hover:from-red-700 hover:to-orange-700 transition shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Save className="h-5 w-5" />
+              <span className="font-bold">
+                {isSubmitting ? "保存中..." : "変更を保存"}
+              </span>
+            </button>
           </div>
-        </div>
+        </form>
       </main>
     </div>
   );

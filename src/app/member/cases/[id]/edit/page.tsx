@@ -1,9 +1,9 @@
-// src/app/member/cases/new/page.tsx
-// メンバー（工務店）施工事例新規作成ページ（UI実装 - モックデータ使用）
+// src/app/member/cases/[id]/edit/page.tsx
+// メンバー（工務店）施工事例編集ページ（UI実装 - モックデータ使用）
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -21,6 +21,7 @@ import {
   Plus,
   Menu,
   AlertCircle,
+  Trash2,
 } from "lucide-react";
 
 // モックデータ
@@ -35,6 +36,43 @@ const MOCK_MEMBER = {
     prefecture: "愛知県",
     city: "名古屋市中区",
     logoUrl: "https://placehold.co/120x120/f97316/white?text=NH",
+  },
+};
+
+// 既存の施工事例データ（モック）
+const MOCK_CASE_DATA = {
+  1: {
+    id: 1,
+    title: "自然素材にこだわった平屋の家",
+    description:
+      "木のぬくもりを感じられる、自然素材をふんだんに使った平屋住宅。無垢材のフローリングと珪藻土の壁が特徴です。",
+    prefecture: "愛知県",
+    city: "名古屋市中区",
+    buildingArea: "95.5",
+    budget: "3500",
+    completionYear: "2024",
+    mainImageUrl: "https://placehold.co/800x600/f97316/white?text=Case+1",
+    status: "PUBLISHED" as const,
+    selectedTags: [1, 7, 10],
+    additionalImages: [
+      "https://placehold.co/800x600/f97316/white?text=Add+1",
+      "https://placehold.co/800x600/ea580c/white?text=Add+2",
+    ],
+  },
+  2: {
+    id: 2,
+    title: "モダンデザインの二世帯住宅",
+    description:
+      "シンプルでモダンなデザインの二世帯住宅。各世帯のプライバシーを保ちながら、家族の絆を大切にする設計です。",
+    prefecture: "愛知県",
+    city: "名古屋市東区",
+    buildingArea: "135.2",
+    budget: "4800",
+    completionYear: "2024",
+    mainImageUrl: "https://placehold.co/800x600/ea580c/white?text=Case+2",
+    status: "PUBLISHED" as const,
+    selectedTags: [4, 8, 13],
+    additionalImages: [],
   },
 };
 
@@ -120,9 +158,10 @@ const PREFECTURES = [
   "沖縄県",
 ];
 
-export default function NewCasePage() {
+export default function EditCasePage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // フォームの状態
   const [title, setTitle] = useState("");
@@ -139,6 +178,29 @@ export default function NewCasePage() {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // データ読み込み（モック）
+  useEffect(() => {
+    // TODO: 実際のAPI呼び出しはAPI実装時に追加
+    setTimeout(() => {
+      const caseData = MOCK_CASE_DATA[params.id as keyof typeof MOCK_CASE_DATA];
+      if (caseData) {
+        setTitle(caseData.title);
+        setDescription(caseData.description);
+        setPrefecture(caseData.prefecture);
+        setCity(caseData.city);
+        setBuildingArea(caseData.buildingArea);
+        setBudget(caseData.budget);
+        setCompletionYear(caseData.completionYear);
+        setMainImageUrl(caseData.mainImageUrl);
+        setStatus(caseData.status);
+        setSelectedTags(caseData.selectedTags);
+        setAdditionalImages(caseData.additionalImages);
+      }
+      setIsLoading(false);
+    }, 500);
+  }, [params.id]);
 
   function handleLogout() {
     window.location.href = "/member/login";
@@ -153,8 +215,6 @@ export default function NewCasePage() {
   }
 
   function handleAddImage() {
-    // TODO: 実際の画像アップロード処理はAPI実装時に追加
-    // モックとしてプレースホルダー画像を追加
     const newImageUrl = `https://placehold.co/800x600/f97316/white?text=Image+${additionalImages.length + 1}`;
     setAdditionalImages([...additionalImages, newImageUrl]);
   }
@@ -190,13 +250,33 @@ export default function NewCasePage() {
     setIsSubmitting(true);
 
     // TODO: 実際の保存処理はAPI実装時に追加
-    // 現在はUI実装のみ - モック保存
     setTimeout(() => {
       alert(
-        saveStatus === "DRAFT" ? "下書きとして保存しました" : "公開しました"
+        saveStatus === "DRAFT"
+          ? "下書きとして保存しました"
+          : "変更を公開しました"
       );
       router.push("/member/cases");
     }, 1000);
+  }
+
+  async function handleDelete() {
+    // TODO: 実際の削除処理はAPI実装時に追加
+    setTimeout(() => {
+      alert("施工事例を削除しました");
+      router.push("/member/cases");
+    }, 500);
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-orange-50 via-red-50 to-pink-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-red-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">読み込み中...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -337,12 +417,19 @@ export default function NewCasePage() {
             >
               <ArrowLeft className="h-6 w-6" />
             </Link>
-            <div>
+            <div className="flex-1">
               <h1 className="text-3xl font-black text-gray-900">
-                施工事例の新規作成
+                施工事例の編集
               </h1>
-              <p className="text-gray-600 mt-1">新しい施工事例を登録します</p>
+              <p className="text-gray-600 mt-1">施工事例の内容を編集します</p>
             </div>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+            >
+              <Trash2 className="h-5 w-5" />
+              <span className="font-medium hidden sm:inline">削除</span>
+            </button>
           </div>
         </div>
 
@@ -532,7 +619,7 @@ export default function NewCasePage() {
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
             <h2 className="text-xl font-black text-gray-900 mb-2">画像</h2>
             <p className="text-sm text-gray-600 mb-6">
-              施工事例の写真を追加してください
+              施工事例の写真を追加・変更してください
             </p>
 
             {/* メイン画像 */}
@@ -540,28 +627,8 @@ export default function NewCasePage() {
               <label className="block text-sm font-bold text-gray-700 mb-2">
                 メイン画像
               </label>
-              <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-red-500 transition">
-                <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-sm text-gray-600 mb-2">
-                  クリックまたはドラッグ&ドロップで画像をアップロード
-                </p>
-                <p className="text-xs text-gray-500">
-                  推奨サイズ: 1200 x 800px (PNG, JPG)
-                </p>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setMainImageUrl(
-                      "https://placehold.co/1200x800/f97316/white?text=Main+Image"
-                    )
-                  }
-                  className="mt-4 px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-sm font-medium"
-                >
-                  画像を選択（モック）
-                </button>
-              </div>
-              {mainImageUrl && (
-                <div className="mt-4 relative">
+              {mainImageUrl ? (
+                <div className="relative">
                   <img
                     src={mainImageUrl}
                     alt="メイン画像"
@@ -573,6 +640,24 @@ export default function NewCasePage() {
                     className="absolute top-2 right-2 p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
                   >
                     <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-red-500 transition">
+                  <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-sm text-gray-600 mb-2">
+                    クリックまたはドラッグ&ドロップで画像をアップロード
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setMainImageUrl(
+                        "https://placehold.co/1200x800/f97316/white?text=Main+Image"
+                      )
+                    }
+                    className="mt-4 px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-sm font-medium"
+                  >
+                    画像を選択（モック）
                   </button>
                 </div>
               )}
@@ -633,13 +718,48 @@ export default function NewCasePage() {
               >
                 <Eye className="h-5 w-5" />
                 <span className="font-bold">
-                  {isSubmitting ? "保存中..." : "公開する"}
+                  {isSubmitting ? "保存中..." : "変更を公開"}
                 </span>
               </button>
             </div>
           </div>
         </div>
       </main>
+
+      {/* 削除確認モーダル */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-start gap-4 mb-6">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center shrink-0">
+                <AlertCircle className="h-6 w-6 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-gray-900 mb-2">
+                  施工事例を削除しますか?
+                </h3>
+                <p className="text-gray-600 text-sm">
+                  この操作は取り消せません。本当に削除してもよろしいですか?
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium"
+              >
+                削除する
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
