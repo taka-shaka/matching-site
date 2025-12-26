@@ -6,20 +6,17 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  Home,
-  Building2,
-  FileText,
-  MessageSquare,
   TrendingUp,
   Eye,
   Star,
   Calendar,
   Menu,
-  X,
-  LogOut,
   Settings,
   PlusCircle,
+  FileText,
+  MessageSquare,
 } from "lucide-react";
+import MemberSidebar from "@/components/member/MemberSidebar";
 
 // モックデータ（ログイン中の工務店メンバー情報）
 const MOCK_MEMBER = {
@@ -106,13 +103,6 @@ const RECENT_INQUIRIES = [
 export default function MemberDashboard() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const navItems = [
-    { label: "ダッシュボード", href: "/member", icon: Home, active: true },
-    { label: "施工事例", href: "/member/cases", icon: FileText },
-    { label: "問い合わせ", href: "/member/inquiries", icon: MessageSquare },
-    { label: "会社情報", href: "/member/company", icon: Building2 },
-  ];
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "PUBLISHED":
@@ -159,128 +149,16 @@ export default function MemberDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* サイドバー（デスクトップ） */}
-      <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
-        <div className="flex flex-col flex-grow bg-white border-r border-gray-200 pt-5 pb-4 overflow-y-auto">
-          {/* ロゴ */}
-          <div className="flex items-center flex-shrink-0 px-6 mb-6">
-            <div className="w-10 h-10 bg-linear-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center">
-              <Building2 className="w-6 h-6 text-white" />
-            </div>
-            <span className="ml-3 text-xl font-black text-gray-900">
-              Member Portal
-            </span>
-          </div>
-
-          {/* 会社情報 */}
-          <div className="px-6 mb-6">
-            <div className="p-4 bg-linear-to-br from-red-50 to-orange-50 rounded-xl border border-red-100">
-              <p className="text-xs text-gray-500 mb-1">所属工務店</p>
-              <p className="text-sm font-bold text-gray-900">
-                {MOCK_MEMBER.company.name}
-              </p>
-              <p className="text-xs text-gray-600 mt-1">
-                {MOCK_MEMBER.company.prefecture} {MOCK_MEMBER.company.city}
-              </p>
-            </div>
-          </div>
-
-          {/* ナビゲーション */}
-          <nav className="flex-1 px-3 space-y-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition ${
-                    item.active
-                      ? "bg-linear-to-r from-red-500 to-orange-500 text-white"
-                      : "text-gray-700 hover:bg-gray-100"
-                  }`}
-                >
-                  <Icon
-                    className={`mr-3 h-5 w-5 ${
-                      item.active ? "text-white" : "text-gray-400"
-                    }`}
-                  />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-
-          {/* ユーザー情報 */}
-          <div className="flex-shrink-0 px-3 pb-4">
-            <div className="flex items-center px-3 py-3 bg-gray-50 rounded-lg">
-              <div className="flex-shrink-0">
-                <div className="w-10 h-10 bg-linear-to-br from-red-400 to-orange-400 rounded-full flex items-center justify-center">
-                  <span className="text-sm font-bold text-white">
-                    {MOCK_MEMBER.name.charAt(0)}
-                  </span>
-                </div>
-              </div>
-              <div className="ml-3 flex-1">
-                <p className="text-sm font-medium text-gray-900">
-                  {MOCK_MEMBER.name}
-                </p>
-                <p className="text-xs text-gray-500">{MOCK_MEMBER.role}</p>
-              </div>
-              <Link
-                href="/member/login"
-                className="ml-2 text-gray-400 hover:text-gray-600"
-              >
-                <LogOut className="h-5 w-5" />
-              </Link>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      {/* モバイルメニュー */}
-      {isMobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 bg-white">
-          <div className="flex flex-col h-full">
-            <div className="flex items-center justify-between p-4 border-b">
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-linear-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center">
-                  <Building2 className="w-6 h-6 text-white" />
-                </div>
-                <span className="ml-3 text-xl font-black text-gray-900">
-                  Member Portal
-                </span>
-              </div>
-              <button
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="p-2 text-gray-600"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg ${
-                      item.active
-                        ? "bg-linear-to-r from-red-500 to-orange-500 text-white"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                  >
-                    <Icon className="mr-3 h-5 w-5" />
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
-        </div>
-      )}
+      {/* サイドバー */}
+      <MemberSidebar
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+        memberName={MOCK_MEMBER.name}
+        memberRole={MOCK_MEMBER.role}
+        companyName={MOCK_MEMBER.company.name}
+        companyPrefecture={MOCK_MEMBER.company.prefecture}
+        companyCity={MOCK_MEMBER.company.city}
+      />
 
       {/* メインコンテンツ */}
       <div className="lg:pl-64">

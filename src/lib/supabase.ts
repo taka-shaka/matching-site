@@ -6,23 +6,22 @@ import { createBrowserClient } from "@supabase/ssr";
 import { createServerClient } from "@supabase/ssr";
 import { createClient, User } from "@supabase/supabase-js";
 
-// 環境変数チェック
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-  throw new Error("Missing env.NEXT_PUBLIC_SUPABASE_URL");
-}
-if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-  throw new Error("Missing env.NEXT_PUBLIC_SUPABASE_ANON_KEY");
-}
-
 // ========================================
 // クライアントサイド用（ブラウザ）
 // ========================================
 
 export function createSupabaseBrowserClient() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl) {
+    throw new Error("Missing env.NEXT_PUBLIC_SUPABASE_URL");
+  }
+  if (!supabaseAnonKey) {
+    throw new Error("Missing env.NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  }
+
+  return createBrowserClient(supabaseUrl, supabaseAnonKey);
 }
 
 // ========================================
@@ -60,18 +59,27 @@ export async function createSupabaseServerClient() {
 
 // ========================================
 // 管理者用（Service Role Key使用）
+// サーバーサイド専用 - クライアントでは使用しない
 // ========================================
 
-export const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
+export function createSupabaseAdminClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl) {
+    throw new Error("Missing env.NEXT_PUBLIC_SUPABASE_URL");
+  }
+  if (!serviceRoleKey) {
+    throw new Error("Missing env.SUPABASE_SERVICE_ROLE_KEY");
+  }
+
+  return createClient(supabaseUrl, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
     },
-  }
-);
+  });
+}
 
 // ========================================
 // 型定義
@@ -130,6 +138,7 @@ export async function getCurrentUser() {
  */
 export async function isAdmin(): Promise<boolean> {
   const user = await getCurrentUser();
+  if (!user) return false;
   return getUserType(user) === "admin";
 }
 
@@ -138,6 +147,7 @@ export async function isAdmin(): Promise<boolean> {
  */
 export async function isMember(): Promise<boolean> {
   const user = await getCurrentUser();
+  if (!user) return false;
   return getUserType(user) === "member";
 }
 
@@ -146,5 +156,6 @@ export async function isMember(): Promise<boolean> {
  */
 export async function isCustomer(): Promise<boolean> {
   const user = await getCurrentUser();
+  if (!user) return false;
   return getUserType(user) === "customer";
 }

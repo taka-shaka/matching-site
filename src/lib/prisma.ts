@@ -11,11 +11,11 @@ const globalForPrisma = globalThis as unknown as {
   pool: Pool | undefined;
 };
 
-// PostgreSQL接続プールの作成
+// PostgreSQL接続プールの作成（開発環境ではDIRECT_URLを使用）
 const pool =
   globalForPrisma.pool ??
   new Pool({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: process.env.DIRECT_URL || process.env.DATABASE_URL,
   });
 
 // Prisma PostgreSQLアダプターの作成

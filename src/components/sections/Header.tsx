@@ -1,10 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Menu, X, Home } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Menu, X, Home, User, LogOut } from "lucide-react";
+import { useAuth } from "@/lib/auth-provider";
 
 export function Header() {
+  const router = useRouter();
+  const { user, loading, signOut } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   const navItems = [
     { label: "工務店検索", href: "#companies" },
@@ -12,6 +18,13 @@ export function Header() {
     { label: "家づくりの流れ", href: "#process" },
     { label: "無料相談", href: "#contact" },
   ];
+
+  const handleSignOut = async () => {
+    await signOut();
+    setIsUserMenuOpen(false);
+    router.push("/");
+    router.refresh();
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md">
@@ -44,12 +57,49 @@ export function Header() {
 
           {/* デスクトップボタン */}
           <div className="hidden lg:flex items-center gap-3">
-            <button className="px-6 py-2.5 text-sm font-bold text-red-600 bg-white border-2 border-red-200 rounded-full hover:bg-red-50 transition-all duration-300 hover:scale-105">
-              新規登録
-            </button>
-            <button className="px-6 py-2.5 text-sm font-bold text-white bg-linear-to-r from-red-500 to-orange-500 rounded-full shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105">
-              ログイン
-            </button>
+            {loading ? (
+              <div className="px-6 py-2.5 text-sm text-gray-400">読み込み中...</div>
+            ) : user ? (
+              <div className="relative">
+                <button
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-full hover:bg-gray-200 transition-all duration-200"
+                >
+                  <User className="w-4 h-4" />
+                  <span>{user.email}</span>
+                </button>
+
+                {/* ユーザーメニュードロップダウン */}
+                {isUserMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+                    <div className="px-4 py-2 border-b border-gray-200">
+                      <p className="text-xs text-gray-500">ログイン中</p>
+                      <p className="text-sm font-medium text-gray-900 truncate">{user.email}</p>
+                    </div>
+                    <button
+                      onClick={handleSignOut}
+                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>ログアウト</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                <Link href="/signup">
+                  <button className="px-6 py-2.5 text-sm font-bold text-red-600 bg-white border-2 border-red-200 rounded-full hover:bg-red-50 transition-all duration-300 hover:scale-105">
+                    新規登録
+                  </button>
+                </Link>
+                <Link href="/login">
+                  <button className="px-6 py-2.5 text-sm font-bold text-white bg-linear-to-r from-red-500 to-orange-500 rounded-full shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105">
+                    ログイン
+                  </button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* モバイルメニューボタン */}
@@ -108,12 +158,34 @@ export function Header() {
 
             {/* モバイルボタン */}
             <div className="pt-4 space-y-3 border-t border-gray-200">
-              <button className="w-full px-6 py-3 text-sm font-bold text-red-600 bg-white border-2 border-red-200 rounded-full hover:bg-red-50 transition-all duration-300">
-                新規登録
-              </button>
-              <button className="w-full px-6 py-3 text-sm font-bold text-white bg-linear-to-r from-red-500 to-orange-500 rounded-full shadow-md hover:shadow-lg transition-all duration-300">
-                ログイン
-              </button>
+              {user ? (
+                <>
+                  <div className="px-4 py-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-500 mb-1">ログイン中</p>
+                    <p className="text-sm font-medium text-gray-900 truncate">{user.email}</p>
+                  </div>
+                  <button
+                    onClick={handleSignOut}
+                    className="w-full flex items-center justify-center gap-2 px-6 py-3 text-sm font-bold text-gray-700 bg-white border-2 border-gray-300 rounded-full hover:bg-gray-50 transition-all duration-300"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>ログアウト</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link href="/signup">
+                    <button className="w-full px-6 py-3 text-sm font-bold text-red-600 bg-white border-2 border-red-200 rounded-full hover:bg-red-50 transition-all duration-300">
+                      新規登録
+                    </button>
+                  </Link>
+                  <Link href="/login">
+                    <button className="w-full px-6 py-3 text-sm font-bold text-white bg-linear-to-r from-red-500 to-orange-500 rounded-full shadow-md hover:shadow-lg transition-all duration-300">
+                      ログイン
+                    </button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

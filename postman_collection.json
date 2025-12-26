@@ -1,0 +1,673 @@
+{
+  "info": {
+    "name": "注文住宅マッチングサイト API",
+    "description": "全APIエンドポイントのテストコレクション",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. パブリックAPI（認証不要）",
+      "item": [
+        {
+          "name": "施工事例一覧取得",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/public/cases?page=1&limit=12",
+              "host": ["{{base_url}}"],
+              "path": ["api", "public", "cases"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "12"
+                },
+                {
+                  "key": "prefecture",
+                  "value": "愛知県",
+                  "disabled": true
+                },
+                {
+                  "key": "budget_min",
+                  "value": "3000",
+                  "disabled": true
+                },
+                {
+                  "key": "budget_max",
+                  "value": "5000",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "施工事例詳細取得",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/public/cases/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "public", "cases", "1"]
+            }
+          }
+        },
+        {
+          "name": "工務店一覧取得",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/public/companies?page=1&limit=12",
+              "host": ["{{base_url}}"],
+              "path": ["api", "public", "companies"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "12"
+                },
+                {
+                  "key": "prefecture",
+                  "value": "愛知県",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "工務店詳細取得",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/public/companies/3",
+              "host": ["{{base_url}}"],
+              "path": ["api", "public", "companies", "3"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. 顧客API（要認証）",
+      "item": [
+        {
+          "name": "問い合わせ送信",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"companyId\": 3,\n  \"caseId\": 1,\n  \"message\": \"こちらの施工事例について詳しくお聞きしたいです。\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/customer/inquiries",
+              "host": ["{{base_url}}"],
+              "path": ["api", "customer", "inquiries"]
+            }
+          }
+        },
+        {
+          "name": "問い合わせ一覧取得",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/customer/inquiries",
+              "host": ["{{base_url}}"],
+              "path": ["api", "customer", "inquiries"]
+            }
+          }
+        },
+        {
+          "name": "問い合わせ詳細取得",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/customer/inquiries/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "customer", "inquiries", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. メンバーAPI（要認証）",
+      "item": [
+        {
+          "name": "問い合わせ管理",
+          "item": [
+            {
+              "name": "問い合わせ一覧取得",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/member/inquiries?status=NEW",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "member", "inquiries"],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "NEW",
+                      "disabled": true
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "問い合わせ詳細取得",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/member/inquiries/1",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "member", "inquiries", "1"]
+                }
+              }
+            },
+            {
+              "name": "問い合わせステータス更新",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"IN_PROGRESS\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/member/inquiries/1",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "member", "inquiries", "1"]
+                }
+              }
+            },
+            {
+              "name": "問い合わせ返信送信",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"message\": \"お問い合わせありがとうございます。詳細についてご説明させていただきます。\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/member/inquiries/1/reply",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "member", "inquiries", "1", "reply"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "施工事例管理",
+          "item": [
+            {
+              "name": "施工事例一覧取得",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/member/cases?status=PUBLISHED",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "member", "cases"],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "PUBLISHED",
+                      "disabled": true
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "施工事例詳細取得",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/member/cases/1",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "member", "cases", "1"]
+                }
+              }
+            },
+            {
+              "name": "施工事例新規作成",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"テスト施工事例\",\n  \"description\": \"これはテスト用の施工事例です。\",\n  \"prefecture\": \"愛知県\",\n  \"city\": \"名古屋市中区\",\n  \"buildingArea\": 100.5,\n  \"budget\": 3000,\n  \"completionYear\": 2024,\n  \"status\": \"DRAFT\",\n  \"tagIds\": [21, 28, 33]\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/member/cases",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "member", "cases"]
+                }
+              }
+            },
+            {
+              "name": "施工事例更新",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"更新後のタイトル\",\n  \"description\": \"更新後の説明文です。\",\n  \"status\": \"PUBLISHED\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/member/cases/1",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "member", "cases", "1"]
+                }
+              }
+            },
+            {
+              "name": "施工事例削除",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/member/cases/1",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "member", "cases", "1"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "工務店情報管理",
+          "item": [
+            {
+              "name": "工務店情報取得",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/member/company",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "member", "company"]
+                }
+              }
+            },
+            {
+              "name": "工務店情報更新",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"更新後の工務店名\",\n  \"description\": \"更新後の説明文です。\",\n  \"phoneNumber\": \"052-999-8888\",\n  \"tagIds\": [21, 30, 33]\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/member/company",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "member", "company"]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. 管理者API（要認証）",
+      "item": [
+        {
+          "name": "ダッシュボード統計取得",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "stats"]
+            }
+          }
+        },
+        {
+          "name": "工務店管理",
+          "item": [
+            {
+              "name": "工務店一覧取得",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/companies?page=1&limit=20",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "companies"],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    },
+                    {
+                      "key": "status",
+                      "value": "published",
+                      "disabled": true
+                    },
+                    {
+                      "key": "search",
+                      "value": "ナゴヤ",
+                      "disabled": true
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "工務店詳細取得",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/companies/3",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "companies", "3"]
+                }
+              }
+            },
+            {
+              "name": "工務店情報更新",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"isPublished\": true\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/companies/3",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "companies", "3"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "タグ管理",
+          "item": [
+            {
+              "name": "タグ一覧取得",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/tags?category=HOUSE_TYPE",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "tags"],
+                  "query": [
+                    {
+                      "key": "category",
+                      "value": "HOUSE_TYPE",
+                      "disabled": true
+                    },
+                    {
+                      "key": "search",
+                      "value": "平屋",
+                      "disabled": true
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "タグ新規作成",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"新規タグ\",\n  \"category\": \"PREFERENCE\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/tags",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "tags"]
+                }
+              }
+            },
+            {
+              "name": "タグ更新",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"更新後のタグ名\",\n  \"displayOrder\": 5\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/tags/21",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "tags", "21"]
+                }
+              }
+            },
+            {
+              "name": "タグ削除",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/tags/21",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "tags", "21"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "メンバー管理",
+          "item": [
+            {
+              "name": "メンバー一覧取得",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/members?page=1&limit=20",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "members"],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    },
+                    {
+                      "key": "companyId",
+                      "value": "3",
+                      "disabled": true
+                    },
+                    {
+                      "key": "search",
+                      "value": "田中",
+                      "disabled": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "顧客管理",
+          "item": [
+            {
+              "name": "顧客一覧取得",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/customers?page=1&limit=20",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "customers"],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    },
+                    {
+                      "key": "search",
+                      "value": "山田",
+                      "disabled": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "施工事例管理",
+          "item": [
+            {
+              "name": "施工事例一覧取得（全工務店）",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/cases?page=1&limit=20",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "cases"],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    },
+                    {
+                      "key": "status",
+                      "value": "PUBLISHED",
+                      "disabled": true
+                    },
+                    {
+                      "key": "companyId",
+                      "value": "3",
+                      "disabled": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -4,24 +4,9 @@
 // ⚠️ クライアントコンポーネントでは auth-provider.ts を使用してください
 
 import { redirect } from "next/navigation";
-import { createClient, User } from "@supabase/supabase-js";
-import { createSupabaseServerClient } from "./supabase";
+import { User } from "@supabase/supabase-js";
+import { createSupabaseServerClient, createSupabaseAdminClient } from "./supabase";
 import { prisma } from "./prisma";
-
-// ========================================
-// Supabase Admin Client（サーバーサイド専用）
-// ========================================
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  }
-);
 
 // ========================================
 // 現在のユーザー取得（サーバーサイド）
@@ -171,8 +156,10 @@ export async function createAdmin(params: {
   email: string;
   password: string;
   name: string;
-  role?: "SUPER_ADMIN" | "ADMIN" | "MODERATOR";
+  role?: "SUPER_ADMIN" | "ADMIN";
 }) {
+  const supabaseAdmin = createSupabaseAdminClient();
+
   // 1. Supabase Authでユーザーを作成
   const { data: authData, error: authError } =
     await supabaseAdmin.auth.admin.createUser({
@@ -221,6 +208,8 @@ export async function createMember(params: {
   companyId: number;
   role?: "ADMIN" | "GENERAL";
 }) {
+  const supabaseAdmin = createSupabaseAdminClient();
+
   // 1. Companyが存在するか確認
   const company = await prisma.company.findUnique({
     where: { id: params.companyId },
@@ -280,6 +269,8 @@ export async function createCustomer(params: {
   lastName?: string;
   firstName?: string;
 }) {
+  const supabaseAdmin = createSupabaseAdminClient();
+
   // 1. Supabase Authでユーザーを作成
   const { data: authData, error: authError } =
     await supabaseAdmin.auth.admin.createUser({
@@ -332,6 +323,7 @@ export async function createCustomer(params: {
  * ユーザーのメールアドレスを更新
  */
 export async function updateUserEmail(authId: string, newEmail: string) {
+  const supabaseAdmin = createSupabaseAdminClient();
   const { error } = await supabaseAdmin.auth.admin.updateUserById(authId, {
     email: newEmail,
   });
@@ -345,6 +337,7 @@ export async function updateUserEmail(authId: string, newEmail: string) {
  * ユーザーのパスワードを更新
  */
 export async function updateUserPassword(authId: string, newPassword: string) {
+  const supabaseAdmin = createSupabaseAdminClient();
   const { error } = await supabaseAdmin.auth.admin.updateUserById(authId, {
     password: newPassword,
   });
@@ -361,6 +354,8 @@ export async function deleteUser(
   authId: string,
   userType: "admin" | "member" | "customer"
 ) {
+  const supabaseAdmin = createSupabaseAdminClient();
+
   // 1. Prismaデータベースから削除
   switch (userType) {
     case "admin":

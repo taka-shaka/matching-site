@@ -1,18 +1,29 @@
 // prisma/seed.ts
-// プロトタイプ用シードデータ - 最小限の初期データ
+// データベースにテストデータを投入するシードスクリプト
 
-import "dotenv/config";
+import * as dotenv from "dotenv";
+import * as path from "path";
+
+// .env.localを優先的に読み込む
+dotenv.config({ path: path.resolve(__dirname, "../.env.local") });
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
+
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { createClient } from "@supabase/supabase-js";
 
-// PostgreSQL connection pool
-// seed時はDIRECT_URLを使用（Session poolerではエラーになるため）
-const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL;
-const pool = new Pool({ connectionString });
+// PostgreSQL接続プールの作成（DIRECT_URLを使用）
+const pool = new Pool({
+  connectionString: process.env.DIRECT_URL || process.env.DATABASE_URL,
+});
+
+// Prisma PostgreSQLアダプターの作成
 const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+
+const prisma = new PrismaClient({
+  adapter,
+});
 
 // Supabase Admin Client
 const supabaseAdmin = createClient(
@@ -27,279 +38,440 @@ const supabaseAdmin = createClient(
 );
 
 async function main() {
-  console.log("🌱 プロトタイプ用シードデータを投入します...\n");
+  console.log("🌱 Starting seed...");
 
-  // ===== 1. 管理者アカウント =====
-  console.log("📝 管理者アカウントを作成中...");
+  // 既存のデータをクリア（開発環境のみ）
+  console.log("🗑️  Clearing existing data...");
+  await prisma.inquiryResponse.deleteMany();
+  await prisma.inquiry.deleteMany();
+  await prisma.constructionCaseTag.deleteMany();
+  await prisma.companyTag.deleteMany();
+  await prisma.constructionCase.deleteMany();
+  await prisma.tag.deleteMany();
+  await prisma.member.deleteMany();
+  await prisma.customer.deleteMany();
+  await prisma.company.deleteMany();
+  await prisma.admin.deleteMany();
 
-  try {
-    const { data: authData, error: authError } =
-      await supabaseAdmin.auth.admin.createUser({
-        email: "admin@example.com",
-        password: "admin123456",
-        email_confirm: true,
-        app_metadata: {
-          user_type: "admin",
-        },
-      });
+  // 1. タグを作成
+  console.log("📌 Creating tags...");
+  const tags = await Promise.all([
+    // 住宅タイプ
+    prisma.tag.create({
+      data: { name: "二階建て", category: "HOUSE_TYPE", displayOrder: 1 },
+    }),
+    prisma.tag.create({
+      data: { name: "平屋", category: "HOUSE_TYPE", displayOrder: 2 },
+    }),
+    prisma.tag.create({
+      data: { name: "三階建て", category: "HOUSE_TYPE", displayOrder: 3 },
+    }),
+    // 価格帯
+    prisma.tag.create({
+      data: { name: "2000万円台", category: "PRICE_RANGE", displayOrder: 1 },
+    }),
+    prisma.tag.create({
+      data: { name: "3000万円台", category: "PRICE_RANGE", displayOrder: 2 },
+    }),
+    prisma.tag.create({
+      data: { name: "4000万円台", category: "PRICE_RANGE", displayOrder: 3 },
+    }),
+    // 構造
+    prisma.tag.create({
+      data: { name: "木造", category: "STRUCTURE", displayOrder: 1 },
+    }),
+    prisma.tag.create({
+      data: { name: "鉄骨造", category: "STRUCTURE", displayOrder: 2 },
+    }),
+    // 雰囲気
+    prisma.tag.create({
+      data: { name: "ナチュラル", category: "ATMOSPHERE", displayOrder: 1 },
+    }),
+    prisma.tag.create({
+      data: { name: "モダン", category: "ATMOSPHERE", displayOrder: 2 },
+    }),
+    prisma.tag.create({
+      data: { name: "和風", category: "ATMOSPHERE", displayOrder: 3 },
+    }),
+    // こだわり
+    prisma.tag.create({
+      data: {
+        name: "高断熱・高気密",
+        category: "PREFERENCE",
+        displayOrder: 1,
+      },
+    }),
+    prisma.tag.create({
+      data: { name: "自然素材", category: "PREFERENCE", displayOrder: 2 },
+    }),
+    prisma.tag.create({
+      data: { name: "吹き抜け", category: "PREFERENCE", displayOrder: 3 },
+    }),
+  ]);
+  console.log(`✅ Created ${tags.length} tags`);
 
-    if (authError) throw authError;
+  // 2. 管理者ユーザーを作成
+  console.log("👨‍💼 Creating admin user...");
+  const adminAuthResult = await supabaseAdmin.auth.admin.createUser({
+    email: "admin@matching-site.jp",
+    password: "admin123456",
+    email_confirm: true,
+    app_metadata: {
+      user_type: "admin",
+    },
+  });
 
-    await prisma.admin.upsert({
-      where: { email: "admin@example.com" },
-      update: {},
-      create: {
-        authId: authData.user!.id,
-        email: "admin@example.com",
-        name: "システム管理者",
+  if (adminAuthResult.data.user) {
+    await prisma.admin.create({
+      data: {
+        authId: adminAuthResult.data.user.id,
+        email: "admin@matching-site.jp",
+        name: "管理者 太郎",
         role: "SUPER_ADMIN",
       },
     });
-
-    console.log("✅ 管理者アカウント作成完了");
-    console.log("   Email: admin@example.com");
-    console.log("   Password: admin123456\n");
-  } catch (error: unknown) {
-    const err = error as { code?: string; message?: string };
-    if (
-      err.code === "email_exists" ||
-      err.message?.includes("already exists")
-    ) {
-      console.log("⚠️  管理者アカウントは既に存在します\n");
-    } else {
-      throw error;
-    }
+    console.log(
+      "✅ Created admin user (email: admin@matching-site.jp, password: admin123456)"
+    );
   }
 
-  // ===== 2. 基本タグ（20個） =====
-  console.log("📝 タグマスタを投入中...");
-
-  const tags = [
-    // 家タイプ（5個）
-    { name: "注文住宅", category: "HOUSE_TYPE" as const, displayOrder: 1 },
-    { name: "リフォーム", category: "HOUSE_TYPE" as const, displayOrder: 2 },
-    {
-      name: "リノベーション",
-      category: "HOUSE_TYPE" as const,
-      displayOrder: 3,
-    },
-    { name: "建て替え", category: "HOUSE_TYPE" as const, displayOrder: 4 },
-    { name: "新築分譲住宅", category: "HOUSE_TYPE" as const, displayOrder: 5 },
-
-    // 価格帯（5個）
-    { name: "1000万円〜", category: "PRICE_RANGE" as const, displayOrder: 1 },
-    { name: "2000万円〜", category: "PRICE_RANGE" as const, displayOrder: 2 },
-    { name: "3000万円〜", category: "PRICE_RANGE" as const, displayOrder: 3 },
-    { name: "4000万円〜", category: "PRICE_RANGE" as const, displayOrder: 4 },
-    { name: "5000万円〜", category: "PRICE_RANGE" as const, displayOrder: 5 },
-
-    // 構造（5個）
-    { name: "平屋", category: "STRUCTURE" as const, displayOrder: 1 },
-    { name: "3階建て以上", category: "STRUCTURE" as const, displayOrder: 2 },
-    { name: "二世帯住宅", category: "STRUCTURE" as const, displayOrder: 3 },
-    { name: "ガレージハウス", category: "STRUCTURE" as const, displayOrder: 4 },
-    { name: "バリアフリー", category: "STRUCTURE" as const, displayOrder: 5 },
-
-    // デザイン（5個）
-    { name: "ナチュラル", category: "ATMOSPHERE" as const, displayOrder: 1 },
-    {
-      name: "シンプルモダン",
-      category: "ATMOSPHERE" as const,
-      displayOrder: 2,
-    },
-    { name: "北欧風", category: "ATMOSPHERE" as const, displayOrder: 3 },
-    {
-      name: "アメリカンスタイル",
-      category: "ATMOSPHERE" as const,
-      displayOrder: 4,
-    },
-    { name: "カフェ風", category: "ATMOSPHERE" as const, displayOrder: 5 },
-  ];
-
-  for (const tag of tags) {
-    await prisma.tag.upsert({
-      where: { name: tag.name },
-      update: {},
-      create: {
-        name: tag.name,
-        category: tag.category,
-        displayOrder: tag.displayOrder,
-      },
-    });
-  }
-
-  console.log("✅ タグマスタ投入完了: 20件\n");
-
-  // ===== 3. サンプル工務店（2社） =====
-  console.log("📝 サンプル工務店を作成中...");
-
-  const company1 = await prisma.company.upsert({
-    where: { email: "company1@example.com" },
-    update: {},
-    create: {
-      name: "ナゴヤホーム株式会社",
+  // 3. 工務店を作成
+  console.log("🏢 Creating companies...");
+  const company1 = await prisma.company.create({
+    data: {
+      name: "株式会社ナゴヤホーム",
       description:
-        "名古屋市を中心に注文住宅を手がける工務店です。お客様の理想の住まいを一緒に作り上げます。",
-      address: "名古屋市中区栄1-1-1",
+        "愛知県名古屋市を中心に、自然素材にこだわった住宅を提供しています。",
+      address: "愛知県名古屋市中区栄1-1-1",
       prefecture: "愛知県",
       city: "名古屋市中区",
       phoneNumber: "052-123-4567",
-      email: "company1@example.com",
-      websiteUrl: "https://nagoya-home.example.com",
+      email: "info@nagoya-home.co.jp",
+      websiteUrl: "https://nagoya-home.co.jp",
       isPublished: true,
     },
   });
 
-  const company2 = await prisma.company.upsert({
-    where: { email: "company2@example.com" },
-    update: {},
-    create: {
-      name: "東海ハウジング",
-      description:
-        "自然素材にこだわった家づくりを得意としています。健康的で快適な住まいをご提案します。",
-      address: "名古屋市東区泉1-2-3",
+  const company2 = await prisma.company.create({
+    data: {
+      name: "株式会社豊田ハウジング",
+      description: "豊田市で30年の実績。高断熱・高気密住宅が得意です。",
+      address: "愛知県豊田市若宮町1-1",
       prefecture: "愛知県",
-      city: "名古屋市東区",
-      phoneNumber: "052-234-5678",
-      email: "company2@example.com",
-      websiteUrl: "https://tokai-housing.example.com",
+      city: "豊田市",
+      phoneNumber: "0565-987-6543",
+      email: "contact@toyota-housing.co.jp",
+      websiteUrl: "https://toyota-housing.co.jp",
       isPublished: true,
     },
   });
 
-  console.log("✅ サンプル工務店作成完了: 2社");
-  console.log(`   - ${company1.name}`);
-  console.log(`   - ${company2.name}\n`);
+  const company3 = await prisma.company.create({
+    data: {
+      name: "株式会社岡崎工務店",
+      description: "新規登録の工務店です。",
+      address: "愛知県岡崎市康生町1-1",
+      prefecture: "愛知県",
+      city: "岡崎市",
+      phoneNumber: "0564-777-8888",
+      email: "support@okazaki-komuten.jp",
+      isPublished: false,
+    },
+  });
 
-  // ===== 4. 工務店担当者（各社1名） =====
-  console.log("📝 工務店担当者を作成中...");
+  console.log("✅ Created 3 companies");
 
-  try {
-    // 会社1の担当者
-    const { data: member1Auth } = await supabaseAdmin.auth.admin.createUser({
-      email: "member1@example.com",
-      password: "member123456",
-      email_confirm: true,
-      app_metadata: {
-        user_type: "member",
-        company_id: company1.id,
+  // 工務店にタグを関連付け
+  await Promise.all([
+    prisma.companyTag.create({
+      data: { companyId: company1.id, tagId: tags[1].id },
+    }), // 平屋
+    prisma.companyTag.create({
+      data: { companyId: company1.id, tagId: tags[8].id },
+    }), // ナチュラル
+    prisma.companyTag.create({
+      data: { companyId: company1.id, tagId: tags[12].id },
+    }), // 自然素材
+    prisma.companyTag.create({
+      data: { companyId: company2.id, tagId: tags[0].id },
+    }), // 二階建て
+    prisma.companyTag.create({
+      data: { companyId: company2.id, tagId: tags[11].id },
+    }), // 高断熱・高気密
+  ]);
+
+  // 4. メンバーユーザーを作成
+  console.log("👤 Creating member users...");
+  const member1AuthResult = await supabaseAdmin.auth.admin.createUser({
+    email: "tanaka@nagoya-home.co.jp",
+    password: "member123456",
+    email_confirm: true,
+    app_metadata: {
+      user_type: "member",
+      company_id: company1.id,
+    },
+  });
+
+  let member1Id: number | undefined;
+  if (member1AuthResult.data.user) {
+    const member1 = await prisma.member.create({
+      data: {
+        authId: member1AuthResult.data.user.id,
+        email: "tanaka@nagoya-home.co.jp",
+        name: "田中一郎",
+        role: "ADMIN",
+        companyId: company1.id,
       },
     });
-
-    if (member1Auth.user) {
-      await prisma.member.upsert({
-        where: { email: "member1@example.com" },
-        update: {},
-        create: {
-          authId: member1Auth.user.id,
-          email: "member1@example.com",
-          name: "山田太郎",
-          role: "ADMIN",
-          companyId: company1.id,
-        },
-      });
-    }
-
-    // 会社2の担当者
-    const { data: member2Auth } = await supabaseAdmin.auth.admin.createUser({
-      email: "member2@example.com",
-      password: "member123456",
-      email_confirm: true,
-      app_metadata: {
-        user_type: "member",
-        company_id: company2.id,
-      },
-    });
-
-    if (member2Auth.user) {
-      await prisma.member.upsert({
-        where: { email: "member2@example.com" },
-        update: {},
-        create: {
-          authId: member2Auth.user.id,
-          email: "member2@example.com",
-          name: "佐藤花子",
-          role: "ADMIN",
-          companyId: company2.id,
-        },
-      });
-    }
-
-    console.log("✅ 工務店担当者作成完了: 2名");
-    console.log("   - member1@example.com / member123456");
-    console.log("   - member2@example.com / member123456\n");
-  } catch (error: unknown) {
-    const err = error as { code?: string; message?: string };
-    if (
-      err.code === "email_exists" ||
-      err.message?.includes("already exists")
-    ) {
-      console.log("⚠️  工務店担当者は既に存在します\n");
-    } else {
-      throw error;
-    }
+    member1Id = member1.id;
+    console.log(
+      "✅ Created member1 (email: tanaka@nagoya-home.co.jp, password: member123456)"
+    );
   }
 
-  // ===== 5. サンプル顧客（1名） =====
-  console.log("📝 サンプル顧客を作成中...");
+  const member2AuthResult = await supabaseAdmin.auth.admin.createUser({
+    email: "yamada@toyota-housing.co.jp",
+    password: "member123456",
+    email_confirm: true,
+    app_metadata: {
+      user_type: "member",
+      company_id: company2.id,
+    },
+  });
 
-  try {
-    const { data: customerAuth } = await supabaseAdmin.auth.admin.createUser({
-      email: "customer@example.com",
-      password: "customer123456",
-      email_confirm: true,
-      app_metadata: {
-        user_type: "customer",
+  let member2Id: number | undefined;
+  if (member2AuthResult.data.user) {
+    const member2 = await prisma.member.create({
+      data: {
+        authId: member2AuthResult.data.user.id,
+        email: "yamada@toyota-housing.co.jp",
+        name: "山田太郎",
+        role: "ADMIN",
+        companyId: company2.id,
+      },
+    });
+    member2Id = member2.id;
+    console.log(
+      "✅ Created member2 (email: yamada@toyota-housing.co.jp, password: member123456)"
+    );
+  }
+
+  // 5. 顧客ユーザーを作成
+  console.log("👥 Creating customer users...");
+  const customer1AuthResult = await supabaseAdmin.auth.admin.createUser({
+    email: "customer1@example.com",
+    password: "customer123456",
+    email_confirm: true,
+    app_metadata: {
+      user_type: "customer",
+    },
+  });
+
+  let customer1Id: number | undefined;
+  if (customer1AuthResult.data.user) {
+    const customer1 = await prisma.customer.create({
+      data: {
+        authId: customer1AuthResult.data.user.id,
+        email: "customer1@example.com",
+        lastName: "佐藤",
+        firstName: "花子",
+        phoneNumber: "090-1234-5678",
+      },
+    });
+    customer1Id = customer1.id;
+    console.log(
+      "✅ Created customer1 (email: customer1@example.com, password: customer123456)"
+    );
+  }
+
+  const customer2AuthResult = await supabaseAdmin.auth.admin.createUser({
+    email: "customer2@example.com",
+    password: "customer123456",
+    email_confirm: true,
+    app_metadata: {
+      user_type: "customer",
+    },
+  });
+
+  if (customer2AuthResult.data.user) {
+    await prisma.customer.create({
+      data: {
+        authId: customer2AuthResult.data.user.id,
+        email: "customer2@example.com",
+        lastName: "鈴木",
+        firstName: "太郎",
+        phoneNumber: "080-9876-5432",
+      },
+    });
+    console.log(
+      "✅ Created customer2 (email: customer2@example.com, password: customer123456)"
+    );
+  }
+
+  // 6. 施工事例を作成
+  console.log("🏠 Creating construction cases...");
+  if (member1Id && member2Id) {
+    const case1 = await prisma.constructionCase.create({
+      data: {
+        companyId: company1.id,
+        authorId: member1Id,
+        title: "自然素材にこだわった平屋の家",
+        description:
+          "無垢材のフローリングと漆喰の壁で仕上げた、温かみのある平屋住宅です。",
+        prefecture: "愛知県",
+        city: "名古屋市緑区",
+        buildingArea: 120.5,
+        budget: 3500,
+        completionYear: 2024,
+        status: "PUBLISHED",
+        publishedAt: new Date("2024-01-15"),
+        viewCount: 152,
       },
     });
 
-    if (customerAuth.user) {
-      await prisma.customer.upsert({
-        where: { email: "customer@example.com" },
-        update: {},
-        create: {
-          authId: customerAuth.user.id,
-          email: "customer@example.com",
-          lastName: "田中",
-          firstName: "次郎",
-          phoneNumber: "090-1234-5678",
-        },
-      });
-    }
+    await Promise.all([
+      prisma.constructionCaseTag.create({
+        data: { caseId: case1.id, tagId: tags[1].id },
+      }), // 平屋
+      prisma.constructionCaseTag.create({
+        data: { caseId: case1.id, tagId: tags[4].id },
+      }), // 3000万円台
+      prisma.constructionCaseTag.create({
+        data: { caseId: case1.id, tagId: tags[8].id },
+      }), // ナチュラル
+      prisma.constructionCaseTag.create({
+        data: { caseId: case1.id, tagId: tags[12].id },
+      }), // 自然素材
+    ]);
 
-    console.log("✅ サンプル顧客作成完了: 1名");
-    console.log("   - customer@example.com / customer123456\n");
-  } catch (error: unknown) {
-    const err = error as { code?: string; message?: string };
-    if (
-      err.code === "email_exists" ||
-      err.message?.includes("already exists")
-    ) {
-      console.log("⚠️  サンプル顧客は既に存在します\n");
-    } else {
-      throw error;
-    }
+    const case2 = await prisma.constructionCase.create({
+      data: {
+        companyId: company2.id,
+        authorId: member2Id,
+        title: "高断熱・高気密のモダン住宅",
+        description:
+          "ZEH基準をクリアした、省エネ性能に優れた二階建て住宅です。",
+        prefecture: "愛知県",
+        city: "豊田市",
+        buildingArea: 135.0,
+        budget: 4200,
+        completionYear: 2024,
+        status: "PUBLISHED",
+        publishedAt: new Date("2024-02-20"),
+        viewCount: 98,
+      },
+    });
+
+    await Promise.all([
+      prisma.constructionCaseTag.create({
+        data: { caseId: case2.id, tagId: tags[0].id },
+      }), // 二階建て
+      prisma.constructionCaseTag.create({
+        data: { caseId: case2.id, tagId: tags[5].id },
+      }), // 4000万円台
+      prisma.constructionCaseTag.create({
+        data: { caseId: case2.id, tagId: tags[9].id },
+      }), // モダン
+      prisma.constructionCaseTag.create({
+        data: { caseId: case2.id, tagId: tags[11].id },
+      }), // 高断熱・高気密
+    ]);
+
+    const case3 = await prisma.constructionCase.create({
+      data: {
+        companyId: company1.id,
+        authorId: member1Id,
+        title: "吹き抜けのある開放的な家",
+        description: "リビングの大きな吹き抜けが特徴的な住宅です。",
+        prefecture: "愛知県",
+        city: "名古屋市千種区",
+        buildingArea: 145.0,
+        budget: 3800,
+        completionYear: 2023,
+        status: "DRAFT",
+      },
+    });
+
+    await Promise.all([
+      prisma.constructionCaseTag.create({
+        data: { caseId: case3.id, tagId: tags[0].id },
+      }), // 二階建て
+      prisma.constructionCaseTag.create({
+        data: { caseId: case3.id, tagId: tags[13].id },
+      }), // 吹き抜け
+    ]);
+
+    console.log("✅ Created 3 construction cases");
   }
 
-  console.log("🎉 プロトタイプ用シードデータの投入が完了しました！\n");
-  console.log("📊 投入データサマリー:");
-  console.log("   - 管理者: 1名");
-  console.log("   - 工務店: 2社");
-  console.log("   - 担当者: 2名");
-  console.log("   - 顧客: 1名");
-  console.log("   - タグ: 20件\n");
-  console.log("🔐 ログイン情報:");
-  console.log("   Admin:    admin@example.com / admin123456");
-  console.log("   Member:   member1@example.com / member123456");
-  console.log("   Customer: customer@example.com / customer123456");
+  // 7. 問い合わせを作成
+  console.log("💬 Creating inquiries...");
+  if (customer1Id) {
+    const inquiry1 = await prisma.inquiry.create({
+      data: {
+        customerId: customer1Id,
+        inquirerName: "佐藤花子",
+        inquirerEmail: "customer1@example.com",
+        inquirerPhone: "090-1234-5678",
+        companyId: company1.id,
+        message:
+          "平屋の住宅を検討しています。見学会の予定はありますでしょうか？",
+        status: "IN_PROGRESS",
+        respondedAt: new Date("2024-03-10"),
+        createdAt: new Date("2024-03-10"),
+      },
+    });
+
+    await prisma.inquiryResponse.create({
+      data: {
+        inquiryId: inquiry1.id,
+        sender: "COMPANY",
+        senderName: "田中一郎",
+        message:
+          "お問い合わせありがとうございます。来月の第2土曜日に見学会を予定しております。",
+        createdAt: new Date("2024-03-10T14:00:00"),
+      },
+    });
+
+    await prisma.inquiry.create({
+      data: {
+        customerId: customer1Id,
+        inquirerName: "佐藤花子",
+        inquirerEmail: "customer1@example.com",
+        inquirerPhone: "090-1234-5678",
+        companyId: company2.id,
+        message: "高断熱住宅について詳しく知りたいです。",
+        status: "NEW",
+        createdAt: new Date("2024-03-15"),
+      },
+    });
+
+    console.log("✅ Created 2 inquiries with responses");
+  }
+
+  console.log("✨ Seed completed successfully!");
+  console.log("\n📝 Test Credentials:");
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  console.log("Admin:");
+  console.log("  Email: admin@matching-site.jp");
+  console.log("  Password: admin123456");
+  console.log("\nMember (ナゴヤホーム):");
+  console.log("  Email: tanaka@nagoya-home.co.jp");
+  console.log("  Password: member123456");
+  console.log("\nMember (豊田ハウジング):");
+  console.log("  Email: yamada@toyota-housing.co.jp");
+  console.log("  Password: member123456");
+  console.log("\nCustomer:");
+  console.log("  Email: customer1@example.com");
+  console.log("  Password: customer123456");
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 }
 
 main()
-  .then(async () => {
-    await prisma.$disconnect();
-  })
-  .catch(async (e) => {
-    console.error("❌ エラー発生:", e);
-    await prisma.$disconnect();
+  .catch((e) => {
+    console.error("❌ Seed failed:", e);
     process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
   });

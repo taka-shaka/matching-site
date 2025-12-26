@@ -23,9 +23,22 @@ export default function LoginPage() {
 
       if (result.error) {
         setError(result.error.message);
-      } else {
-        // ログイン成功
-        router.push("/dashboard");
+      } else if (result.user) {
+        // ログイン成功 - ユーザータイプに応じてリダイレクト
+        const userType = result.user.userType;
+
+        switch (userType) {
+          case "admin":
+            router.push("/admin");
+            break;
+          case "member":
+            router.push("/member");
+            break;
+          case "customer":
+          default:
+            router.push("/"); // 顧客は トップページへ
+            break;
+        }
         router.refresh();
       }
     } catch {
