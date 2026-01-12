@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -30,7 +30,8 @@ interface Company {
   logoUrl: string | null;
 }
 
-export default function InquiryPage() {
+// SearchParamsを使用するコンポーネントを分離
+function InquiryForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
@@ -413,5 +414,23 @@ export default function InquiryPage() {
 
       <Footer />
     </div>
+  );
+}
+
+// メインのページコンポーネント（Suspenseでラップ）
+export default function InquiryPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 text-red-500 animate-spin mx-auto mb-4" />
+            <p className="text-gray-600">読み込み中...</p>
+          </div>
+        </div>
+      }
+    >
+      <InquiryForm />
+    </Suspense>
   );
 }
