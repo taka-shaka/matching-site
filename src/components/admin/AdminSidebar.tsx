@@ -12,6 +12,7 @@ import {
   LogOut,
   X,
   BarChart3,
+  MessageCircle,
 } from "lucide-react";
 
 interface AdminSidebarProps {
@@ -29,9 +30,18 @@ export default function AdminSidebar({
 }: AdminSidebarProps) {
   const pathname = usePathname();
 
-  function handleLogout() {
-    // TODO: 実際のログアウト処理はAPI実装時に追加
-    window.location.href = "/admin/login";
+  async function handleLogout() {
+    try {
+      // Supabaseからログアウト
+      const { createSupabaseBrowserClient } = await import("@/lib/supabase");
+      const supabase = createSupabaseBrowserClient();
+      await supabase.auth.signOut();
+      // ログインページにリダイレクト
+      window.location.href = "/admin/login";
+    } catch (error) {
+      console.error("ログアウトエラー:", error);
+      window.location.href = "/admin/login";
+    }
   }
 
   // ナビゲーションリンクの設定
@@ -60,7 +70,12 @@ export default function AdminSidebar({
     {
       href: "/admin/customers",
       icon: UserCircle,
-      label: "顧客管理",
+      label: "会員顧客管理",
+    },
+    {
+      href: "/admin/general-inquiries",
+      icon: MessageCircle,
+      label: "サイト問い合わせ",
     },
     {
       href: "/admin/tags",
@@ -83,7 +98,7 @@ export default function AdminSidebar({
       <aside
         className={`
         fixed inset-y-0 left-0 z-50 w-64 bg-gray-950 shadow-2xl transform transition-transform duration-300 ease-in-out
-        lg:relative lg:translate-x-0
+        lg:translate-x-0
         ${isOpen ? "translate-x-0" : "-translate-x-full"}
       `}
       >

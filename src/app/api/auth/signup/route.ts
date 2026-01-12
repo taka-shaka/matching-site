@@ -41,11 +41,13 @@ export async function POST(request: NextRequest) {
       await supabaseAdmin.auth.admin.createUser({
         email: body.email,
         password: body.password,
-        email_confirm: false, // メール認証必要
+        email_confirm: true, // メール確認済みとしてマーク（即座にログイン可能）
         app_metadata: {
           user_type: "customer",
         },
         user_metadata: {
+          last_name: body.lastName || "",
+          first_name: body.firstName || "",
           full_name:
             body.lastName && body.firstName
               ? `${body.lastName} ${body.firstName}`
@@ -80,8 +82,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: true,
-          message:
-            "Registration successful. Please check your email to confirm your account.",
+          message: "Registration successful. You can now log in.",
           customer: {
             id: customer.id,
             email: customer.email,

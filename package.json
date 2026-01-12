@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
-    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\""
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
+    "seed": "tsx prisma/seed.ts",
+    "reset-auth": "tsx prisma/reset-auth.ts",
+    "seed:fresh": "npm run reset-auth && npm run seed"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.1.0",
@@ -20,7 +23,8 @@
     "next": "15.5.7",
     "pg": "^8.16.3",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "swr": "^2.3.8"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -34,6 +38,7 @@
     "prettier": "^3.7.4",
     "prisma": "^7.1.0",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }

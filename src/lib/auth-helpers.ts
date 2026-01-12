@@ -5,7 +5,10 @@
 
 import { redirect } from "next/navigation";
 import { User } from "@supabase/supabase-js";
-import { createSupabaseServerClient, createSupabaseAdminClient } from "./supabase";
+import {
+  createSupabaseServerClient,
+  createSupabaseAdminClient,
+} from "./supabase";
 import { prisma } from "./prisma";
 
 // ========================================

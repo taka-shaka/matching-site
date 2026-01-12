@@ -1,5 +1,5 @@
 // src/app/admin/login/page.tsx
-// 管理者ログインページ（UI実装 - モックデータ使用）
+// 管理者ログインページ
 
 "use client";
 
@@ -7,9 +7,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ShieldCheck, Mail, Lock, AlertCircle } from "lucide-react";
+import { useAuth } from "@/lib/auth-provider";
 
 export default function AdminLoginPage() {
   const router = useRouter();
+  const { signIn } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,21 +23,50 @@ export default function AdminLoginPage() {
     setError("");
     setIsLoading(true);
 
-    // TODO: 実際の認証処理はAPI実装時に追加
-    // 現在はUI実装のみ - モックログイン
-    setTimeout(() => {
-      if (email && password) {
-        // ログイン成功として管理者ダッシュボードへ
-        router.push("/admin");
-      } else {
-        setError("メールアドレスとパスワードを入力してください");
+    try {
+      const { user, error: signInError } = await signIn(email, password);
+
+      if (signInError) {
+        // エラーメッセージを日本語に変換
+        const errorMessage = signInError.message;
+        if (errorMessage.includes("Invalid login credentials")) {
+          setError("メールアドレスまたはパスワードが正しくありません");
+        } else if (errorMessage.includes("Email not confirmed")) {
+          setError("メールアドレスが確認されていません");
+        } else if (errorMessage.includes("User not found")) {
+          setError("アカウントが見つかりません");
+        } else {
+          setError("ログインに失敗しました。入力内容をご確認ください。");
+        }
         setIsLoading(false);
+        return;
       }
-    }, 1000);
+
+      if (!user) {
+        setError("ログインに失敗しました。入力内容をご確認ください。");
+        setIsLoading(false);
+        return;
+      }
+
+      // 管理者かどうかをチェック
+      if (user.userType !== "admin") {
+        setError("管理者アカウントでログインしてください");
+        setIsLoading(false);
+        return;
+      }
+
+      // ログイン成功 - 管理者ダッシュボードへ
+      router.push("/admin");
+      router.refresh();
+    } catch (err) {
+      console.error("Login error:", err);
+      setError("ログイン処理中にエラーが発生しました");
+      setIsLoading(false);
+    }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-gray-900 via-gray-800 to-gray-900 py-12 px-4 sm:px-6 lg:px-8">
       {/* 背景装飾 */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
@@ -47,7 +78,7 @@ export default function AdminLoginPage() {
         <div className="bg-white/10 backdrop-blur-lg rounded-3xl shadow-2xl p-8 border border-white/20">
           {/* ヘッダー */}
           <div className="text-center">
-            <div className="mx-auto h-20 w-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg mb-6">
+            <div className="mx-auto h-20 w-20 bg-linear-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg mb-6">
               <ShieldCheck className="h-10 w-10 text-white" />
             </div>
             <h2 className="text-3xl font-black text-white mb-2">
@@ -128,7 +159,7 @@ export default function AdminLoginPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="group relative flex w-full justify-center rounded-xl border border-transparent bg-gradient-to-r from-blue-600 to-purple-600 py-3 px-4 text-sm font-bold text-white hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-xl"
+                className="group relative flex w-full justify-center rounded-xl border border-transparent bg-linear-to-r from-blue-600 to-purple-600 py-3 px-4 text-sm font-bold text-white hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-xl"
               >
                 {isLoading ? (
                   <span className="flex items-center gap-2">

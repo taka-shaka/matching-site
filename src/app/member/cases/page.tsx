@@ -1,415 +1,402 @@
 // src/app/member/cases/page.tsx
-// メンバー（工務店）施工事例管理一覧ページ（UI実装 - モックデータ使用）
+// メンバー（工務店）施工事例管理一覧ページ
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import useSWR from "swr";
 import {
-  Settings,
   Search,
   Plus,
   Eye,
   Edit2,
-  Trash2,
-  Filter,
-  ChevronDown,
   Menu,
   FileText,
+  Loader2,
+  AlertCircle,
+  Calendar,
 } from "lucide-react";
 import MemberSidebar from "@/components/member/MemberSidebar";
+import { useAuth } from "@/lib/auth-provider";
+import { formatBudget } from "@/lib/format";
 
-// モックデータ（Prismaスキーマに準拠）
-const MOCK_MEMBER = {
-  id: 1,
-  name: "山田太郎",
-  email: "yamada@nagoya-home.co.jp",
-  role: "ADMIN",
-  company: {
-    id: 1,
-    name: "株式会社ナゴヤホーム",
-    prefecture: "愛知県",
-    city: "名古屋市中区",
-    logoUrl: "https://placehold.co/120x120/f97316/white?text=NH",
-  },
-};
+// API Fetcher
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-const MOCK_CASES = [
-  {
-    id: 1,
-    title: "自然素材にこだわった平屋の家",
-    description:
-      "木のぬくもりを感じられる、自然素材をふんだんに使った平屋住宅。無垢材のフローリングと珪藻土の壁が特徴です。",
-    prefecture: "愛知県",
-    city: "名古屋市中区",
-    buildingArea: 95.5,
-    budget: 3500,
-    completionYear: 2024,
-    mainImageUrl: "https://placehold.co/800x600/f97316/white?text=Case+1",
-    status: "PUBLISHED" as const,
-    viewCount: 342,
-    publishedAt: "2024-11-15",
-    createdAt: "2024-11-10",
-    tags: [
-      { id: 1, name: "平屋", category: "HOUSE_TYPE" },
-      { id: 2, name: "3000-4000万円", category: "PRICE_RANGE" },
-      { id: 3, name: "木造", category: "STRUCTURE" },
-    ],
-  },
-  {
-    id: 2,
-    title: "モダンデザインの二世帯住宅",
-    description:
-      "シンプルでモダンなデザインの二世帯住宅。各世帯のプライバシーを保ちながら、家族の絆を大切にする設計です。",
-    prefecture: "愛知県",
-    city: "名古屋市東区",
-    buildingArea: 135.2,
-    budget: 4800,
-    completionYear: 2024,
-    mainImageUrl: "https://placehold.co/800x600/ea580c/white?text=Case+2",
-    status: "PUBLISHED" as const,
-    viewCount: 521,
-    publishedAt: "2024-10-20",
-    createdAt: "2024-10-15",
-    tags: [
-      { id: 4, name: "二世帯", category: "HOUSE_TYPE" },
-      { id: 5, name: "4000-5000万円", category: "PRICE_RANGE" },
-      { id: 6, name: "モダン", category: "ATMOSPHERE" },
-    ],
-  },
-  {
-    id: 3,
-    title: "開放的なリビングが魅力の家",
-    description:
-      "吹き抜けの大空間リビングが特徴。自然光がたっぷり入る明るく開放的な住まいです。",
-    prefecture: "愛知県",
-    city: "春日井市",
-    buildingArea: 110.8,
-    budget: 4200,
-    completionYear: 2024,
-    mainImageUrl: "https://placehold.co/800x600/dc2626/white?text=Case+3",
-    status: "PUBLISHED" as const,
-    viewCount: 287,
-    publishedAt: "2024-09-05",
-    createdAt: "2024-09-01",
-    tags: [
-      { id: 7, name: "2階建て", category: "HOUSE_TYPE" },
-      { id: 8, name: "開放感", category: "PREFERENCE" },
-    ],
-  },
-  {
-    id: 4,
-    title: "省エネ性能に優れたZEH住宅",
-    description:
-      "高断熱・高気密で省エネ性能に優れたZEH仕様の住宅。太陽光発電システムも完備しています。",
-    prefecture: "愛知県",
-    city: "一宮市",
-    buildingArea: 102.4,
-    budget: 3800,
-    completionYear: 2023,
-    mainImageUrl: "https://placehold.co/800x600/f97316/white?text=Case+4",
-    status: "DRAFT" as const,
-    viewCount: 0,
-    publishedAt: null,
-    createdAt: "2024-11-20",
-    tags: [
-      { id: 9, name: "省エネ", category: "PREFERENCE" },
-      { id: 10, name: "3000-4000万円", category: "PRICE_RANGE" },
-    ],
-  },
-  {
-    id: 5,
-    title: "和モダンな平屋の邸宅",
-    description:
-      "伝統的な和の要素を取り入れながら、現代的な快適さを兼ね備えた和モダンスタイルの平屋です。",
-    prefecture: "愛知県",
-    city: "豊田市",
-    buildingArea: 115.6,
-    budget: 4500,
-    completionYear: 2023,
-    mainImageUrl: "https://placehold.co/800x600/ea580c/white?text=Case+5",
-    status: "DRAFT" as const,
-    viewCount: 0,
-    publishedAt: null,
-    createdAt: "2024-11-18",
-    tags: [
-      { id: 11, name: "平屋", category: "HOUSE_TYPE" },
-      { id: 12, name: "和モダン", category: "ATMOSPHERE" },
-    ],
-  },
-];
+interface Member {
+  name: string;
+  role: "ADMIN" | "GENERAL";
+}
 
-type FilterStatus = "all" | "PUBLISHED" | "DRAFT";
+interface Company {
+  name: string;
+}
+
+interface Tag {
+  id: number;
+  name: string;
+  category: string;
+}
+
+interface CaseTag {
+  id: number;
+  tag: Tag;
+}
+
+interface CaseItem {
+  id: number;
+  title: string;
+  description: string;
+  prefecture: string;
+  city: string;
+  buildingArea: number | null;
+  budget: number | null;
+  completionYear: number | null;
+  mainImageUrl: string | null;
+  status: "DRAFT" | "PUBLISHED";
+  viewCount: number;
+  publishedAt: string | null;
+  createdAt: string;
+  author: {
+    id: number;
+    name: string;
+  };
+  tags: CaseTag[];
+}
+
+interface CasesResponse {
+  cases: CaseItem[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+type StatusFilter = "all" | "PUBLISHED" | "DRAFT";
 
 export default function MemberCasesPage() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
-  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user, loading } = useAuth();
+  const router = useRouter();
 
-  // フィルタリングロジック
-  const filteredCases = MOCK_CASES.filter((case_) => {
-    const matchesSearch = case_.title
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
-    const matchesStatus =
-      filterStatus === "all" || case_.status === filterStatus;
-    return matchesSearch && matchesStatus;
-  });
+  // 認証・役割チェック
+  useEffect(() => {
+    if (!loading) {
+      if (!user) {
+        router.push("/member/login");
+      } else if (user.userType !== "member") {
+        router.push("/");
+      }
+    }
+  }, [user, loading, router]);
 
-  const stats = {
-    all: MOCK_CASES.length,
-    published: MOCK_CASES.filter((c) => c.status === "PUBLISHED").length,
-    draft: MOCK_CASES.filter((c) => c.status === "DRAFT").length,
-  };
+  // ダッシュボードデータ取得（メンバー情報用）
+  const { data: dashboardData } = useSWR("/api/member/dashboard", fetcher);
+
+  // 施工事例一覧取得
+  const apiUrl =
+    statusFilter === "all"
+      ? "/api/member/cases"
+      : `/api/member/cases?status=${statusFilter}`;
+
+  const { data, error, isLoading } = useSWR<CasesResponse>(apiUrl, fetcher);
+
+  // ローカル検索フィルター
+  const filteredCases = data?.cases.filter((caseItem) =>
+    caseItem.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  function formatDate(dateString: string) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("ja-JP", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+  }
+
+  // ローディング中の処理
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+      </div>
+    );
+  }
+
+  // 未認証または役割不一致の処理
+  if (!user || user.userType !== "member") {
+    return null;
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-red-50 to-pink-50">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50">
       {/* サイドバー */}
       <MemberSidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        memberName={MOCK_MEMBER.name}
-        memberRole={MOCK_MEMBER.role}
-        companyName={MOCK_MEMBER.company.name}
-        companyPrefecture={MOCK_MEMBER.company.prefecture}
-        companyCity={MOCK_MEMBER.company.city}
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+        memberName={dashboardData?.member.name || user?.email || "メンバー"}
+        companyName={dashboardData?.company.name || ""}
+        memberRole={dashboardData?.member.role || "GENERAL"}
       />
 
       {/* メインコンテンツ */}
       <div className="lg:pl-64">
-        <main className="p-4 lg:p-8 overflow-y-auto">
-          {/* ヘッダー */}
-          <div className="mb-8">
-            <div className="flex items-center gap-4 mb-4">
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className="lg:hidden p-2 text-gray-600 hover:text-gray-900 hover:bg-white rounded-lg transition"
+        {/* トップバー */}
+        <div className="sticky top-0 z-10 flex h-16 shrink-0 bg-white border-b border-gray-200">
+          <button
+            type="button"
+            className="px-4 text-gray-500 lg:hidden"
+            onClick={() => setIsMobileMenuOpen(true)}
+          >
+            <Menu className="h-6 w-6" />
+          </button>
+          <div className="flex flex-1 justify-between px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-1 items-center">
+              <h1 className="text-2xl font-black text-gray-900">
+                施工事例管理
+              </h1>
+            </div>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/member/cases/new"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition"
               >
-                <Menu className="h-6 w-6" />
-              </button>
-              <div>
-                <h1 className="text-3xl font-black text-gray-900">
-                  施工事例管理
-                </h1>
-                <p className="text-gray-600 mt-1">
-                  施工事例の投稿・編集・管理ができます
-                </p>
+                <Plus className="h-5 w-5" />
+                新規作成
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* メインコンテンツエリア */}
+        <main className="p-4 lg:p-8">
+          {/* フィルター・検索 */}
+          <div className="mb-6 flex flex-col sm:flex-row gap-4">
+            {/* 検索 */}
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="施工事例を検索..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
               </div>
             </div>
 
-            {/* アクションバー */}
-            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-              <div className="flex flex-col lg:flex-row gap-4">
-                {/* 検索バー */}
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="タイトルで検索..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition"
-                  />
-                </div>
-
-                {/* フィルター */}
-                <div className="relative">
-                  <button
-                    onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-                    className="flex items-center gap-2 px-6 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition"
-                  >
-                    <Filter className="h-5 w-5 text-gray-600" />
-                    <span className="font-medium text-gray-700">
-                      {filterStatus === "all"
-                        ? "すべて"
-                        : filterStatus === "PUBLISHED"
-                          ? "公開中"
-                          : "下書き"}
-                    </span>
-                    <ChevronDown className="h-4 w-4 text-gray-400" />
-                  </button>
-                  {showFilterDropdown && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-10">
-                      <button
-                        onClick={() => {
-                          setFilterStatus("all");
-                          setShowFilterDropdown(false);
-                        }}
-                        className="w-full text-left px-4 py-2 hover:bg-gray-100 transition"
-                      >
-                        すべて ({stats.all})
-                      </button>
-                      <button
-                        onClick={() => {
-                          setFilterStatus("PUBLISHED");
-                          setShowFilterDropdown(false);
-                        }}
-                        className="w-full text-left px-4 py-2 hover:bg-gray-100 transition"
-                      >
-                        公開中 ({stats.published})
-                      </button>
-                      <button
-                        onClick={() => {
-                          setFilterStatus("DRAFT");
-                          setShowFilterDropdown(false);
-                        }}
-                        className="w-full text-left px-4 py-2 hover:bg-gray-100 transition"
-                      >
-                        下書き ({stats.draft})
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* 新規作成ボタン */}
-                <Link
-                  href="/member/cases/new"
-                  className="flex items-center justify-center gap-2 px-6 py-3 bg-linear-to-r from-red-600 to-orange-600 text-white rounded-xl hover:from-red-700 hover:to-orange-700 transition shadow-lg hover:shadow-xl"
-                >
-                  <Plus className="h-5 w-5" />
-                  <span className="font-bold">新規作成</span>
-                </Link>
-              </div>
+            {/* ステータスフィルター */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setStatusFilter("all")}
+                className={`px-4 py-2 rounded-lg font-medium transition ${
+                  statusFilter === "all"
+                    ? "bg-blue-600 text-white"
+                    : "bg-white text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                すべて
+              </button>
+              <button
+                onClick={() => setStatusFilter("PUBLISHED")}
+                className={`px-4 py-2 rounded-lg font-medium transition ${
+                  statusFilter === "PUBLISHED"
+                    ? "bg-green-600 text-white"
+                    : "bg-white text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                公開中
+              </button>
+              <button
+                onClick={() => setStatusFilter("DRAFT")}
+                className={`px-4 py-2 rounded-lg font-medium transition ${
+                  statusFilter === "DRAFT"
+                    ? "bg-gray-600 text-white"
+                    : "bg-white text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                下書き
+              </button>
             </div>
           </div>
 
-          {/* 施工事例一覧 */}
-          {filteredCases.length === 0 ? (
-            <div className="bg-white rounded-2xl shadow-lg p-12 text-center border border-gray-100">
-              <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">
-                {searchQuery
-                  ? "検索条件に一致する施工事例が見つかりませんでした"
-                  : "まだ施工事例がありません"}
-              </p>
-              {!searchQuery && (
-                <Link
-                  href="/member/cases/new"
-                  className="inline-flex items-center gap-2 mt-6 px-6 py-3 bg-linear-to-r from-red-600 to-orange-600 text-white rounded-xl hover:from-red-700 hover:to-orange-700 transition shadow-lg"
-                >
-                  <Plus className="h-5 w-5" />
-                  <span className="font-bold">最初の施工事例を作成</span>
-                </Link>
-              )}
+          {/* ローディング状態 */}
+          {isLoading && (
+            <div className="flex justify-center py-20">
+              <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
             </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-6">
-              {filteredCases.map((case_) => (
-                <div
-                  key={case_.id}
-                  className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100 hover:shadow-xl transition-all duration-300"
-                >
-                  <div className="flex flex-col md:flex-row">
-                    {/* サムネイル */}
-                    <div className="md:w-80 h-64 md:h-auto bg-gray-200 flex-shrink-0">
-                      <img
-                        src={case_.mainImageUrl}
-                        alt={case_.title}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
+          )}
 
-                    {/* コンテンツ */}
-                    <div className="flex-1 p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="text-xl font-black text-gray-900">
-                              {case_.title}
-                            </h3>
-                            <span
-                              className={`px-3 py-1 text-xs font-bold rounded-full ${
-                                case_.status === "PUBLISHED"
-                                  ? "bg-green-100 text-green-700"
-                                  : "bg-gray-100 text-gray-600"
-                              }`}
-                            >
-                              {case_.status === "PUBLISHED"
-                                ? "公開中"
-                                : "下書き"}
+          {/* エラー状態 */}
+          {error && (
+            <div className="bg-white rounded-2xl shadow-lg p-12 border border-gray-100 text-center">
+              <AlertCircle className="h-16 w-16 text-blue-500 mx-auto mb-4" />
+              <p className="text-gray-600 text-lg font-medium mb-4">
+                データの取得に失敗しました
+              </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition"
+              >
+                再読み込み
+              </button>
+            </div>
+          )}
+
+          {/* データ表示 */}
+          {!isLoading && !error && data && (
+            <>
+              {/* 統計情報 */}
+              <div className="mb-6 bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-gray-600">
+                    {filteredCases?.length || 0} 件の施工事例
+                    {searchQuery && ` （「${searchQuery}」で検索）`}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    全{data.pagination.total}件中
+                  </p>
+                </div>
+              </div>
+
+              {/* 施工事例一覧 */}
+              {filteredCases && filteredCases.length === 0 ? (
+                <div className="bg-white rounded-2xl shadow-lg p-12 border border-gray-100 text-center">
+                  <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500">
+                    {searchQuery
+                      ? "検索条件に一致する施工事例がありません"
+                      : "まだ施工事例がありません"}
+                  </p>
+                  {!searchQuery && (
+                    <Link
+                      href="/member/cases/new"
+                      className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition"
+                    >
+                      <Plus className="h-5 w-5" />
+                      最初の施工事例を作成
+                    </Link>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredCases?.map((caseItem) => (
+                    <div
+                      key={caseItem.id}
+                      className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition group"
+                    >
+                      {/* 画像 */}
+                      <div className="relative h-48 overflow-hidden bg-linear-to-br from-blue-400 to-indigo-400">
+                        {caseItem.mainImageUrl ? (
+                          <img
+                            src={caseItem.mainImageUrl}
+                            alt={caseItem.title}
+                            className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <FileText className="w-16 h-16 text-white opacity-50" />
+                          </div>
+                        )}
+
+                        {/* ステータスバッジ */}
+                        <div className="absolute top-3 right-3">
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-bold ${
+                              caseItem.status === "PUBLISHED"
+                                ? "bg-green-500 text-white"
+                                : "bg-gray-500 text-white"
+                            }`}
+                          >
+                            {caseItem.status === "PUBLISHED"
+                              ? "公開"
+                              : "下書き"}
+                          </span>
+                        </div>
+
+                        {/* 閲覧数 */}
+                        <div className="absolute bottom-3 left-3">
+                          <div className="flex items-center gap-1 px-2 py-1 bg-black bg-opacity-50 rounded-full">
+                            <Eye className="h-3 w-3 text-white" />
+                            <span className="text-xs text-white font-medium">
+                              {caseItem.viewCount}
                             </span>
                           </div>
-                          <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                            {case_.description}
-                          </p>
                         </div>
                       </div>
 
-                      {/* タグ */}
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {case_.tags.map((tag) => (
-                          <span
-                            key={tag.id}
-                            className="px-3 py-1 text-xs font-medium bg-red-50 text-red-600 rounded-full border border-red-200"
-                          >
-                            {tag.name}
+                      {/* コンテンツ */}
+                      <div className="p-4">
+                        <h3 className="font-bold text-gray-900 mb-2 line-clamp-2">
+                          {caseItem.title}
+                        </h3>
+                        <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                          {caseItem.description}
+                        </p>
+
+                        {/* メタ情報 */}
+                        <div className="flex items-center gap-2 text-xs text-gray-500 mb-3">
+                          <span>
+                            {caseItem.prefecture} {caseItem.city}
                           </span>
-                        ))}
-                      </div>
+                          {caseItem.budget && (
+                            <>
+                              <span>•</span>
+                              <span>{formatBudget(caseItem.budget)}</span>
+                            </>
+                          )}
+                        </div>
 
-                      {/* メタ情報 */}
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 pb-4 border-b border-gray-200">
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">所在地</p>
-                          <p className="text-sm font-medium text-gray-900">
-                            {case_.prefecture} {case_.city}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">延床面積</p>
-                          <p className="text-sm font-medium text-gray-900">
-                            {case_.buildingArea}㎡
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">予算</p>
-                          <p className="text-sm font-medium text-gray-900">
-                            {case_.budget}万円
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">完成年</p>
-                          <p className="text-sm font-medium text-gray-900">
-                            {case_.completionYear}年
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* アクションと統計 */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4 text-sm text-gray-500">
-                          <div className="flex items-center gap-1">
-                            <Eye className="h-4 w-4" />
-                            <span>{case_.viewCount} views</span>
+                        {/* タグ */}
+                        {caseItem.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-3">
+                            {caseItem.tags.slice(0, 3).map((ct) => (
+                              <span
+                                key={ct.id}
+                                className="inline-block px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-md"
+                              >
+                                {ct.tag.name}
+                              </span>
+                            ))}
                           </div>
-                          {case_.publishedAt && (
-                            <span>公開: {case_.publishedAt}</span>
-                          )}
-                          {!case_.publishedAt && (
-                            <span>作成: {case_.createdAt}</span>
-                          )}
+                        )}
+
+                        {/* 作成日時 */}
+                        <div className="flex items-center gap-2 text-xs text-gray-400 mb-3">
+                          <Calendar className="h-3 w-3" />
+                          {formatDate(caseItem.createdAt)}
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        {/* アクション */}
+                        <div className="flex gap-2">
                           <Link
-                            href={`/member/cases/${case_.id}/edit`}
-                            className="flex items-center gap-2 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                            href={`/member/cases/${caseItem.id}`}
+                            className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 text-center text-sm font-medium rounded-lg hover:bg-gray-200 transition"
+                          >
+                            詳細
+                          </Link>
+                          <Link
+                            href={`/member/cases/${caseItem.id}/edit`}
+                            className="flex-1 px-3 py-2 bg-blue-600 text-white text-center text-sm font-medium rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-1"
                           >
                             <Edit2 className="h-4 w-4" />
-                            <span className="font-medium">編集</span>
+                            編集
                           </Link>
-                          <button className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition">
-                            <Trash2 className="h-4 w-4" />
-                            <span className="font-medium">削除</span>
-                          </button>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </main>
       </div>

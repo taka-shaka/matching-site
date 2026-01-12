@@ -1,11 +1,12 @@
 // src/app/member/cases/[id]/page.tsx
-// メンバー（工務店）施工事例詳細プレビューページ（UI実装 - モックデータ使用）
+// メンバー（工務店）施工事例詳細プレビューページ
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Menu,
   ArrowLeft,
@@ -18,112 +19,170 @@ import {
   Calendar,
   Ruler,
   TrendingUp,
-  Building2,
+  Loader2,
 } from "lucide-react";
 import MemberSidebar from "@/components/member/MemberSidebar";
+import { useAuth } from "@/lib/auth-provider";
+import { formatBudget } from "@/lib/format";
 
-// モックデータ
-const MOCK_MEMBER = {
-  id: 1,
-  name: "山田太郎",
-  email: "yamada@nagoya-home.co.jp",
-  role: "ADMIN",
+interface MemberData {
+  member: {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+  };
   company: {
-    id: 1,
-    name: "株式会社ナゴヤホーム",
-    prefecture: "愛知県",
-    city: "名古屋市中区",
-    logoUrl: "https://placehold.co/120x120/f97316/white?text=NH",
-  },
-};
+    id: number;
+    name: string;
+    prefecture: string;
+    city: string;
+    logoUrl: string | null;
+  };
+}
 
-// 施工事例詳細モックデータ
-const MOCK_CASE_DETAILS: Record<string, any> = {
-  "1": {
-    id: 1,
-    title: "自然素材にこだわった和モダンの家",
-    description:
-      "無垢材と漆喰壁を使用した、健康的で快適な住空間。家族の健康を第一に考え、自然素材をふんだんに使用しました。リビングには大きな吹き抜けを設け、光と風が家中を巡る設計に。キッチンは奥様のこだわりが詰まったオーダーメイド。収納も充実させ、暮らしやすさを追求しています。",
-    prefecture: "愛知県",
-    city: "名古屋市中区",
-    buildingArea: 120.5,
-    budget: 35000000,
-    completionYear: 2023,
-    status: "PUBLISHED",
-    viewCount: 245,
-    publishedAt: "2023-06-15",
-    mainImageUrl:
-      "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200",
-    images: [
-      "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800",
-      "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800",
-      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800",
-      "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=800",
-    ],
-    tags: [
-      { id: 1, tag: { id: 1, name: "和モダン", category: "ATMOSPHERE" } },
-      { id: 2, tag: { id: 8, name: "自然素材", category: "PREFERENCE" } },
-      { id: 3, tag: { id: 9, name: "高気密高断熱", category: "PREFERENCE" } },
-    ],
-    author: {
-      id: 1,
-      name: "山田太郎",
-    },
-    createdAt: "2023-05-10",
-    updatedAt: "2023-06-15",
-  },
-  "2": {
-    id: 2,
-    title: "モダンデザインの二世帯住宅",
-    description:
-      "親世帯と子世帯が快適に暮らせる二世帯住宅。プライバシーを保ちながらも、家族の繋がりを大切にした間取り設計。共有スペースと各世帯専用スペースをバランスよく配置しました。",
-    prefecture: "愛知県",
-    city: "豊田市",
-    buildingArea: 180.0,
-    budget: 48000000,
-    completionYear: 2024,
-    status: "DRAFT",
-    viewCount: 0,
-    publishedAt: null,
-    mainImageUrl:
-      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1200",
-    images: [
-      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800",
-      "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800",
-    ],
-    tags: [
-      { id: 1, tag: { id: 2, name: "モダン", category: "ATMOSPHERE" } },
-      { id: 2, tag: { id: 5, name: "二世帯住宅", category: "HOUSE_TYPE" } },
-    ],
-    author: {
-      id: 1,
-      name: "山田太郎",
-    },
-    createdAt: "2024-12-01",
-    updatedAt: "2024-12-18",
-  },
-};
+interface CaseData {
+  id: number;
+  title: string;
+  description: string;
+  prefecture: string;
+  city: string;
+  buildingArea: number;
+  budget: number;
+  completionYear: number;
+  status: string;
+  viewCount: number;
+  publishedAt: string | null;
+  mainImageUrl: string | null;
+  images: Array<{ id: number; imageUrl: string; displayOrder: number }>;
+  tags: Array<{
+    id: number;
+    tag: { id: number; name: string; category: string };
+  }>;
+  author: {
+    id: number;
+    name: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
 
 export default function MemberCaseDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { user, loading } = useAuth();
   const caseId = params.id as string;
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState(0);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [memberData, setMemberData] = useState<MemberData | null>(null);
+  const [caseData, setCaseData] = useState<CaseData | null>(null);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const caseData = MOCK_CASE_DETAILS[caseId];
+  // 認証・役割チェック
+  useEffect(() => {
+    if (!loading) {
+      if (!user) {
+        router.push("/member/login");
+      } else if (user.userType !== "member") {
+        router.push("/");
+      }
+    }
+  }, [user, loading, router]);
 
-  if (!caseData) {
+  // メンバー情報と施工事例データを取得
+  useEffect(() => {
+    async function fetchData() {
+      if (!user || user.userType !== "member") return;
+
+      setIsLoadingData(true);
+      setError(null);
+
+      try {
+        // メンバー情報を取得
+        const memberResponse = await fetch("/api/member/dashboard");
+        if (!memberResponse.ok) {
+          throw new Error("Failed to fetch member data");
+        }
+        const memberResult = await memberResponse.json();
+        setMemberData(memberResult);
+
+        // 施工事例詳細を取得
+        const caseResponse = await fetch(`/api/member/cases/${caseId}`);
+        if (!caseResponse.ok) {
+          if (caseResponse.status === 404) {
+            setError("not_found");
+          } else {
+            throw new Error("Failed to fetch case data");
+          }
+          return;
+        }
+        const caseResult = await caseResponse.json();
+        setCaseData(caseResult.case);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        setError("fetch_error");
+      } finally {
+        setIsLoadingData(false);
+      }
+    }
+
+    fetchData();
+  }, [user, caseId]);
+
+  async function handleDelete() {
+    try {
+      const response = await fetch(`/api/member/cases/${caseId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete case");
+      }
+
+      setShowDeleteModal(false);
+      router.push("/member/cases");
+    } catch (error) {
+      console.error("Error deleting case:", error);
+      alert("施工事例の削除に失敗しました");
+    }
+  }
+
+  // 認証ローディング中
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-red-50 to-pink-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+      </div>
+    );
+  }
+
+  // 未認証またはメンバー以外の場合
+  if (!user || user.userType !== "member") {
+    return null;
+  }
+
+  // データローディング中
+  if (isLoadingData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-blue-50 via-green-50 to-teal-50">
+        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+      </div>
+    );
+  }
+
+  // エラー表示
+  if (error === "not_found" || !caseData) {
+    return (
+      <div className="min-h-screen bg-linear-to-br from-blue-50 via-green-50 to-teal-50 flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-500 text-lg mb-4">
             施工事例が見つかりませんでした
           </p>
           <Link
             href="/member/cases"
-            className="text-red-600 hover:text-red-700 font-medium"
+            className="text-blue-600 hover:text-blue-700 font-medium"
           >
             施工事例一覧に戻る
           </Link>
@@ -132,29 +191,40 @@ export default function MemberCaseDetailPage() {
     );
   }
 
+  if (error === "fetch_error") {
+    return (
+      <div className="min-h-screen bg-linear-to-br from-blue-50 via-green-50 to-teal-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-500 text-lg mb-4">
+            データの取得に失敗しました
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition"
+          >
+            再読み込み
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const isPublished = caseData.status === "PUBLISHED";
-
-  function handleDelete() {
-    // TODO: API実装時に実際の削除処理を追加
-    setShowDeleteModal(false);
-    router.push("/member/cases");
-  }
-
-  function formatBudget(budget: number) {
-    return (budget / 10000).toLocaleString() + "万円";
-  }
+  const imageUrls = caseData.images
+    .sort((a, b) => a.displayOrder - b.displayOrder)
+    .map((img) => img.imageUrl);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-red-50 to-pink-50">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 via-green-50 to-teal-50">
       {/* サイドバー */}
       <MemberSidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-        memberName={MOCK_MEMBER.name}
-        memberRole={MOCK_MEMBER.role}
-        companyName={MOCK_MEMBER.company.name}
-        companyPrefecture={MOCK_MEMBER.company.prefecture}
-        companyCity={MOCK_MEMBER.company.city}
+        memberName={memberData?.member.name || "メンバー"}
+        memberRole={memberData?.member.role || "MEMBER"}
+        companyName={memberData?.company.name || ""}
+        companyPrefecture={memberData?.company.prefecture || ""}
+        companyCity={memberData?.company.city || ""}
       />
 
       {/* メインコンテンツ */}
@@ -217,7 +287,7 @@ export default function MemberCaseDetailPage() {
               {/* 削除ボタン */}
               <button
                 onClick={() => setShowDeleteModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-red-200 text-red-600 font-bold rounded-xl hover:bg-red-50 transition"
+                className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-blue-200 text-blue-600 font-bold rounded-xl hover:bg-blue-50 transition"
               >
                 <Trash2 className="h-4 w-4" />
                 削除
@@ -241,11 +311,27 @@ export default function MemberCaseDetailPage() {
           <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
             {/* メイン画像 */}
             <div className="relative h-96 bg-gray-200">
-              <img
-                src={caseData.images[selectedImage]}
-                alt={caseData.title}
-                className="w-full h-full object-cover"
-              />
+              {imageUrls.length > 0 ? (
+                <Image
+                  src={imageUrls[selectedImage]}
+                  alt={caseData.title}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1200px"
+                />
+              ) : caseData.mainImageUrl ? (
+                <Image
+                  src={caseData.mainImageUrl}
+                  alt={caseData.title}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1200px"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-400">
+                  画像なし
+                </div>
+              )}
               {!isPublished && (
                 <div className="absolute top-4 left-4 bg-yellow-500 text-white px-4 py-2 rounded-lg font-bold shadow-lg flex items-center gap-2">
                   <AlertCircle className="h-5 w-5" />
@@ -259,22 +345,24 @@ export default function MemberCaseDetailPage() {
             </div>
 
             {/* サムネイル */}
-            {caseData.images.length > 1 && (
+            {imageUrls.length > 1 && (
               <div className="flex gap-2 p-4 overflow-x-auto bg-gray-50">
-                {caseData.images.map((image: string, index: number) => (
+                {imageUrls.map((imageUrl: string, index: number) => (
                   <button
                     key={index}
                     onClick={() => setSelectedImage(index)}
-                    className={`flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden border-2 transition ${
+                    className={`relative shrink-0 w-24 h-24 rounded-lg overflow-hidden border-2 transition ${
                       selectedImage === index
-                        ? "border-red-500"
+                        ? "border-blue-500"
                         : "border-gray-200 hover:border-gray-300"
                     }`}
                   >
-                    <img
-                      src={image}
+                    <Image
+                      src={imageUrl}
                       alt={`${caseData.title} - ${index + 1}`}
-                      className="w-full h-full object-cover"
+                      fill
+                      className="object-cover"
+                      sizes="96px"
                     />
                   </button>
                 ))}
@@ -290,14 +378,16 @@ export default function MemberCaseDetailPage() {
 
               {/* タグ */}
               <div className="flex flex-wrap gap-2 mb-6">
-                {caseData.tags.map((tagItem: any) => (
-                  <span
-                    key={tagItem.id}
-                    className="px-3 py-1 bg-gradient-to-r from-red-100 to-orange-100 text-red-700 text-sm font-medium rounded-full"
-                  >
-                    {tagItem.tag.name}
-                  </span>
-                ))}
+                {caseData.tags.map(
+                  (tagItem: { id: number; tag: { name: string } }) => (
+                    <span
+                      key={tagItem.id}
+                      className="px-3 py-1 bg-linear-to-r from-blue-100 to-green-100 text-blue-700 text-sm font-medium rounded-full"
+                    >
+                      {tagItem.tag.name}
+                    </span>
+                  )
+                )}
               </div>
 
               {/* 基本情報グリッド */}
@@ -389,8 +479,8 @@ export default function MemberCaseDetailPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                <Trash2 className="h-6 w-6 text-red-600" />
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                <Trash2 className="h-6 w-6 text-blue-600" />
               </div>
               <h3 className="text-xl font-black text-gray-900">
                 施工事例を削除
@@ -408,7 +498,7 @@ export default function MemberCaseDetailPage() {
               </button>
               <button
                 onClick={handleDelete}
-                className="flex-1 px-4 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition"
+                className="flex-1 px-4 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition"
               >
                 削除する
               </button>

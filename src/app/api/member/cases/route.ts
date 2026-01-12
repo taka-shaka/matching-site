@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
           ? parseInt(body.completionYear)
           : null,
         mainImageUrl: body.mainImageUrl || null,
-        status: "DRAFT", // 初期状態は下書き
+        status: body.status || "DRAFT", // ステータスを指定可能（デフォルトは下書き）
       },
       include: {
         author: {
@@ -138,7 +138,72 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ success: true, case: newCase }, { status: 201 });
+    // タグを関連付け
+    if (body.tagIds && Array.isArray(body.tagIds) && body.tagIds.length > 0) {
+      await prisma.constructionCaseTag.createMany({
+        data: body.tagIds.map((tagId: number) => ({
+          caseId: newCase.id,
+          tagId: tagId,
+        })),
+      });
+    }
+
+    // 画像URLを保存（配列で受け取る）
+    if (
+      body.imageUrls &&
+      Array.isArray(body.imageUrls) &&
+      body.imageUrls.length > 0
+    ) {
+      await prisma.constructionCaseImage.createMany({
+        data: body.imageUrls.map((url: string, index: number) => ({
+          caseId: newCase.id,
+          imageUrl: url,
+          displayOrder: index,
+        })),
+      });
+
+      // メイン画像が未設定の場合、最初の画像をメイン画像に設定
+      if (!body.mainImageUrl && body.imageUrls.length > 0) {
+        await prisma.constructionCase.update({
+          where: { id: newCase.id },
+          data: { mainImageUrl: body.imageUrls[0] },
+        });
+      }
+    }
+
+    // 更新後のデータを取得（タグと画像を含む）
+    const updatedCase = await prisma.constructionCase.findUnique({
+      where: { id: newCase.id },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        tags: {
+          include: {
+            tag: {
+              select: {
+                id: true,
+                name: true,
+                category: true,
+              },
+            },
+          },
+        },
+        images: {
+          orderBy: {
+            displayOrder: "asc",
+          },
+        },
+      },
+    });
+
+    return NextResponse.json(
+      { success: true, case: updatedCase },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Failed to create case:", error);
 

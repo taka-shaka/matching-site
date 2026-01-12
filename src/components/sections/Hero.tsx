@@ -1,17 +1,24 @@
 "use client";
 
+import Link from "next/link";
+import Image from "next/image";
 import { ChevronDown } from "lucide-react";
 
 export function Hero() {
   return (
-    <section className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-red-50 to-orange-100 overflow-hidden pt-16 sm:pt-20">
-      {/* 背景の装飾要素 */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-20 left-10 w-64 h-64 bg-red-200/30 rounded-full blur-3xl animate-pulse"></div>
-        <div
-          className="absolute bottom-20 right-10 w-96 h-96 bg-orange-200/30 rounded-full blur-3xl animate-pulse"
-          style={{ animationDelay: "1s" }}
-        ></div>
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16 sm:pt-20">
+      {/* 背景画像 */}
+      <div className="absolute inset-0">
+        <Image
+          src="/images/hero-background.jpg"
+          alt="家族の暮らし"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover brightness-105"
+        />
+        {/* グラデーションオーバーレイで視認性を向上 */}
+        <div className="absolute inset-0 bg-linear-to-b from-white/40 via-white/20 to-white/60"></div>
       </div>
 
       {/* メインコンテンツ */}
@@ -55,14 +62,20 @@ export function Hero() {
 
         {/* CTAボタン */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
-          <button className="group relative px-8 py-4 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-full font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 w-full sm:w-auto">
+          <Link
+            href="/companies"
+            className="group relative px-8 py-4 bg-linear-to-r from-red-500 to-orange-500 text-white rounded-full font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 w-full sm:w-auto text-center"
+          >
             <span className="relative z-10">工務店を探す</span>
-            <div className="absolute inset-0 bg-gradient-to-r from-red-600 to-orange-600 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-          </button>
+            <div className="absolute inset-0 bg-linear-to-r from-red-600 to-orange-600 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          </Link>
 
-          <button className="px-8 py-4 bg-white text-red-600 rounded-full font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 border-2 border-red-200 w-full sm:w-auto">
+          <Link
+            href="/cases"
+            className="px-8 py-4 bg-white text-red-600 rounded-full font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 border-2 border-red-200 w-full sm:w-auto text-center inline-block"
+          >
             施工事例を見る
-          </button>
+          </Link>
         </div>
 
         {/* スクロール促進アイコン */}

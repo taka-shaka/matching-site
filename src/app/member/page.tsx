@@ -1,169 +1,182 @@
 // src/app/member/page.tsx
-// メンバーダッシュボードトップ（UI実装 - モックデータ使用）
+// メンバーダッシュボードトップ
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import useSWR from "swr";
 import {
   TrendingUp,
   Eye,
-  Star,
   Calendar,
   Menu,
-  Settings,
   PlusCircle,
   FileText,
   MessageSquare,
+  CheckCircle,
+  Clock,
+  Circle,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import MemberSidebar from "@/components/member/MemberSidebar";
+import { useAuth } from "@/lib/auth-provider";
 
-// モックデータ（ログイン中の工務店メンバー情報）
-const MOCK_MEMBER = {
-  id: 1,
-  name: "山田太郎",
-  email: "yamada@nagoya-home.co.jp",
-  role: "ADMIN", // ADMIN or GENERAL
-  company: {
-    id: 1,
-    name: "株式会社ナゴヤホーム",
-    prefecture: "愛知県",
-    city: "名古屋市中区",
+// API Fetcher
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.error || "API request failed");
+  }
+
+  return data;
+};
+
+interface Member {
+  id: number;
+  name: string;
+  email: string;
+  role: "ADMIN" | "GENERAL";
+}
+
+interface Company {
+  id: number;
+  name: string;
+  prefecture: string;
+  city: string;
+  logoUrl: string | null;
+}
+
+interface RecentCase {
+  id: number;
+  title: string;
+  status: "DRAFT" | "PUBLISHED";
+  viewCount: number;
+  publishedAt: string | null;
+  mainImageUrl: string | null;
+  createdAt: string;
+}
+
+interface RecentInquiry {
+  id: number;
+  inquirerName: string;
+  message: string;
+  status: "NEW" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
+  createdAt: string;
+}
+
+interface DashboardResponse {
+  member: Member;
+  company: Company;
+  stats: {
+    cases: {
+      total: number;
+      published: number;
+      draft: number;
+      totalViews: number;
+    };
+    inquiries: {
+      total: number;
+      new: number;
+      inProgress: number;
+      resolved: number;
+    };
+  };
+  recentCases: RecentCase[];
+  recentInquiries: RecentInquiry[];
+}
+
+const STATUS_CONFIG = {
+  NEW: {
+    label: "新規",
+    icon: Circle,
+    color: "text-blue-600",
+    bgColor: "bg-blue-100",
+  },
+  IN_PROGRESS: {
+    label: "対応中",
+    icon: Clock,
+    color: "text-orange-600",
+    bgColor: "bg-orange-100",
+  },
+  RESOLVED: {
+    label: "解決済み",
+    icon: CheckCircle,
+    color: "text-green-600",
+    bgColor: "bg-green-100",
+  },
+  CLOSED: {
+    label: "クローズ",
+    icon: CheckCircle,
+    color: "text-gray-600",
+    bgColor: "bg-gray-100",
   },
 };
 
-// モックデータ（統計情報）
-const MOCK_STATS = {
-  totalCases: 12,
-  publishedCases: 10,
-  draftCases: 2,
-  totalViews: 2450,
-  totalInquiries: 28,
-  newInquiries: 5,
-  avgRating: 4.8,
-  reviewCount: 48,
-};
-
-// モックデータ（最近の施工事例）
-const RECENT_CASES = [
-  {
-    id: 1,
-    title: "自然素材にこだわった和モダンの家",
-    status: "PUBLISHED",
-    viewCount: 245,
-    publishedAt: "2024-01-15",
-    mainImageUrl:
-      "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400",
-  },
-  {
-    id: 2,
-    title: "開放的な吹き抜けリビングのある家",
-    status: "PUBLISHED",
-    viewCount: 189,
-    publishedAt: "2024-01-10",
-    mainImageUrl:
-      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=400",
-  },
-  {
-    id: 3,
-    title: "平屋で叶える快適な暮らし",
-    status: "DRAFT",
-    viewCount: 0,
-    publishedAt: null,
-    mainImageUrl:
-      "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=400",
-  },
-];
-
-// モックデータ（最近の問い合わせ）
-const RECENT_INQUIRIES = [
-  {
-    id: 1,
-    inquirerName: "田中花子",
-    message: "自然素材の家について詳しく知りたいです...",
-    status: "NEW",
-    createdAt: "2024-01-20T10:30:00",
-  },
-  {
-    id: 2,
-    inquirerName: "佐藤次郎",
-    message: "見学会の日程について教えてください...",
-    status: "IN_PROGRESS",
-    createdAt: "2024-01-19T15:20:00",
-  },
-  {
-    id: 3,
-    inquirerName: "鈴木三郎",
-    message: "予算3500万円で建てられますか？...",
-    status: "RESOLVED",
-    createdAt: "2024-01-18T09:15:00",
-  },
-];
-
-export default function MemberDashboard() {
+export default function MemberDashboardPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { user, loading } = useAuth();
+  const router = useRouter();
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "PUBLISHED":
-        return (
-          <span className="px-2 py-1 text-xs font-bold bg-green-100 text-green-700 rounded-full">
-            公開中
-          </span>
-        );
-      case "DRAFT":
-        return (
-          <span className="px-2 py-1 text-xs font-bold bg-gray-100 text-gray-700 rounded-full">
-            下書き
-          </span>
-        );
-      default:
-        return null;
+  // 認証・役割チェック
+  useEffect(() => {
+    if (!loading) {
+      if (!user) {
+        router.push("/member/login");
+      } else if (user.userType !== "member") {
+        router.push("/");
+      }
     }
-  };
+  }, [user, loading, router]);
 
-  const getInquiryStatusBadge = (status: string) => {
-    switch (status) {
-      case "NEW":
-        return (
-          <span className="px-2 py-1 text-xs font-bold bg-red-100 text-red-700 rounded-full">
-            未対応
-          </span>
-        );
-      case "IN_PROGRESS":
-        return (
-          <span className="px-2 py-1 text-xs font-bold bg-yellow-100 text-yellow-700 rounded-full">
-            対応中
-          </span>
-        );
-      case "RESOLVED":
-        return (
-          <span className="px-2 py-1 text-xs font-bold bg-green-100 text-green-700 rounded-full">
-            解決済み
-          </span>
-        );
-      default:
-        return null;
-    }
-  };
+  // ダッシュボードデータ取得
+  const { data, error, isLoading } = useSWR<DashboardResponse>(
+    "/api/member/dashboard",
+    fetcher
+  );
+
+  function formatDate(dateString: string) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("ja-JP", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+  }
+
+  // ローディング中の処理
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+      </div>
+    );
+  }
+
+  // 未認証または役割不一致の処理
+  if (!user || user.userType !== "member") {
+    return null;
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50">
       {/* サイドバー */}
       <MemberSidebar
         isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
-        memberName={MOCK_MEMBER.name}
-        memberRole={MOCK_MEMBER.role}
-        companyName={MOCK_MEMBER.company.name}
-        companyPrefecture={MOCK_MEMBER.company.prefecture}
-        companyCity={MOCK_MEMBER.company.city}
+        memberName={data?.member.name || user?.email || "メンバー"}
+        companyName={data?.company.name || ""}
+        memberRole={data?.member.role || "GENERAL"}
       />
 
       {/* メインコンテンツ */}
       <div className="lg:pl-64">
         {/* トップバー */}
-        <div className="sticky top-0 z-10 flex h-16 flex-shrink-0 bg-white border-b border-gray-200">
+        <div className="sticky top-0 z-10 flex h-16 shrink-0 bg-white border-b border-gray-200">
           <button
             type="button"
             className="px-4 text-gray-500 lg:hidden"
@@ -177,195 +190,307 @@ export default function MemberDashboard() {
                 ダッシュボード
               </h1>
             </div>
-            <div className="ml-4 flex items-center space-x-4">
-              <Link
-                href="/member/cases/new"
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-bold rounded-lg text-white bg-linear-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 transition shadow-md hover:shadow-lg"
-              >
-                <PlusCircle className="w-4 h-4 mr-2" />
-                新規作成
-              </Link>
-              <Link
-                href="/member/company"
-                className="p-2 text-gray-400 hover:text-gray-600"
-              >
-                <Settings className="h-6 w-6" />
-              </Link>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-600">
+                {data?.member.name || user?.email}
+              </span>
             </div>
           </div>
         </div>
 
-        {/* ダッシュボードコンテンツ */}
-        <main className="flex-1 p-6 lg:p-8">
-          {/* 統計カード */}
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-            {/* 施工事例数 */}
-            <div className="bg-white rounded-2xl shadow-md p-6 border border-gray-100">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-blue-100 rounded-xl">
-                  <FileText className="h-6 w-6 text-blue-600" />
-                </div>
-                <span className="text-xs font-medium text-gray-500">
-                  施工事例
-                </span>
-              </div>
-              <div className="text-3xl font-black text-gray-900 mb-1">
-                {MOCK_STATS.totalCases}件
-              </div>
-              <p className="text-sm text-gray-600">
-                公開中: {MOCK_STATS.publishedCases}件 / 下書き:{" "}
-                {MOCK_STATS.draftCases}件
-              </p>
+        {/* メインコンテンツエリア */}
+        <main className="p-4 lg:p-8">
+          {/* ローディング状態 */}
+          {isLoading && (
+            <div className="flex justify-center py-20">
+              <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
             </div>
+          )}
 
-            {/* 閲覧数 */}
-            <div className="bg-white rounded-2xl shadow-md p-6 border border-gray-100">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-green-100 rounded-xl">
-                  <Eye className="h-6 w-6 text-green-600" />
-                </div>
-                <span className="text-xs font-medium text-gray-500">
-                  総閲覧数
-                </span>
-              </div>
-              <div className="text-3xl font-black text-gray-900 mb-1">
-                {MOCK_STATS.totalViews.toLocaleString()}
-              </div>
-              <p className="text-sm text-green-600 flex items-center">
-                <TrendingUp className="h-4 w-4 mr-1" />
-                今月+15%
+          {/* エラー状態 */}
+          {error && (
+            <div className="bg-white rounded-2xl shadow-lg p-12 border border-gray-100 text-center">
+              <AlertCircle className="h-16 w-16 text-blue-500 mx-auto mb-4" />
+              <p className="text-gray-600 text-lg font-medium mb-4">
+                データの取得に失敗しました
               </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition"
+              >
+                再読み込み
+              </button>
             </div>
+          )}
 
-            {/* 問い合わせ */}
-            <div className="bg-white rounded-2xl shadow-md p-6 border border-gray-100">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-orange-100 rounded-xl">
-                  <MessageSquare className="h-6 w-6 text-orange-600" />
-                </div>
-                <span className="text-xs font-medium text-gray-500">
-                  問い合わせ
-                </span>
-              </div>
-              <div className="text-3xl font-black text-gray-900 mb-1">
-                {MOCK_STATS.totalInquiries}件
-              </div>
-              <p className="text-sm text-red-600">
-                未対応: {MOCK_STATS.newInquiries}件
-              </p>
-            </div>
-
-            {/* 評価 */}
-            <div className="bg-white rounded-2xl shadow-md p-6 border border-gray-100">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-yellow-100 rounded-xl">
-                  <Star className="h-6 w-6 text-yellow-600" />
-                </div>
-                <span className="text-xs font-medium text-gray-500">
-                  平均評価
-                </span>
-              </div>
-              <div className="text-3xl font-black text-gray-900 mb-1">
-                {MOCK_STATS.avgRating}
-              </div>
-              <p className="text-sm text-gray-600">
-                {MOCK_STATS.reviewCount}件のレビュー
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* 最近の施工事例 */}
-            <div className="bg-white rounded-2xl shadow-md p-6 border border-gray-100">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-900">
-                  最近の施工事例
+          {/* データ表示 */}
+          {!isLoading && !error && data && (
+            <>
+              {/* ウェルカムメッセージ */}
+              <div className="mb-8">
+                <h2 className="text-3xl font-black text-gray-900 mb-2">
+                  ようこそ、{data.member.name}さん！
                 </h2>
+                <p className="text-gray-600">
+                  {data.company?.name || "工務店"} の管理画面です
+                </p>
+              </div>
+
+              {/* 統計カード */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                {/* 総施工事例数 */}
+                <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 bg-linear-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                      <FileText className="h-6 w-6 text-white" />
+                    </div>
+                    <TrendingUp className="h-5 w-5 text-green-500" />
+                  </div>
+                  <p className="text-sm text-gray-600 mb-1">施工事例</p>
+                  <p className="text-3xl font-black text-gray-900">
+                    {data.stats.cases.total}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    公開: {data.stats.cases.published} / 下書き:{" "}
+                    {data.stats.cases.draft}
+                  </p>
+                </div>
+
+                {/* 総閲覧数 */}
+                <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 bg-linear-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
+                      <Eye className="h-6 w-6 text-white" />
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-1">総閲覧数</p>
+                  <p className="text-3xl font-black text-gray-900">
+                    {data.stats.cases.totalViews.toLocaleString()}
+                  </p>
+                </div>
+
+                {/* 総問い合わせ数 */}
+                <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 bg-linear-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
+                      <MessageSquare className="h-6 w-6 text-white" />
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-1">問い合わせ</p>
+                  <p className="text-3xl font-black text-gray-900">
+                    {data.stats.inquiries.total}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    新規: {data.stats.inquiries.new}
+                  </p>
+                </div>
+
+                {/* 対応中の問い合わせ */}
+                <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 bg-linear-to-br from-blue-500 to-green-600 rounded-xl flex items-center justify-center">
+                      <Clock className="h-6 w-6 text-white" />
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-1">対応中</p>
+                  <p className="text-3xl font-black text-gray-900">
+                    {data.stats.inquiries.inProgress + data.stats.inquiries.new}
+                  </p>
+                </div>
+              </div>
+
+              {/* クイックアクション */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 <Link
-                  href="/member/cases"
-                  className="text-sm font-medium text-red-600 hover:text-red-700"
+                  href="/member/cases/new"
+                  className="bg-linear-to-br from-blue-500 to-indigo-600 rounded-2xl p-6 text-white hover:shadow-xl transition group"
                 >
-                  すべて見る →
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white bg-opacity-20 rounded-xl flex items-center justify-center">
+                      <PlusCircle className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-black mb-1">
+                        新しい施工事例を追加
+                      </h3>
+                      <p className="text-sm opacity-90">
+                        素敵な施工事例を公開しましょう
+                      </p>
+                    </div>
+                  </div>
                 </Link>
-              </div>
 
-              <div className="space-y-4">
-                {RECENT_CASES.map((caseItem) => (
-                  <Link
-                    key={caseItem.id}
-                    href={`/member/cases/${caseItem.id}/edit`}
-                    className="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 transition"
-                  >
-                    <div className="w-16 h-16 bg-gray-200 rounded-lg overflow-hidden shrink-0">
-                      <img
-                        src={caseItem.mainImageUrl}
-                        alt={caseItem.title}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="text-sm font-bold text-gray-900 truncate">
-                          {caseItem.title}
-                        </p>
-                        {getStatusBadge(caseItem.status)}
-                      </div>
-                      <div className="flex items-center gap-3 text-xs text-gray-500">
-                        {caseItem.publishedAt && (
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            {caseItem.publishedAt}
-                          </span>
-                        )}
-                        <span className="flex items-center gap-1">
-                          <Eye className="w-3 h-3" />
-                          {caseItem.viewCount}回
-                        </span>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-
-            {/* 最近の問い合わせ */}
-            <div className="bg-white rounded-2xl shadow-md p-6 border border-gray-100">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-900">
-                  最近の問い合わせ
-                </h2>
                 <Link
                   href="/member/inquiries"
-                  className="text-sm font-medium text-red-600 hover:text-red-700"
+                  className="bg-linear-to-br from-green-500 to-teal-600 rounded-2xl p-6 text-white hover:shadow-xl transition group"
                 >
-                  すべて見る →
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white bg-opacity-20 rounded-xl flex items-center justify-center">
+                      <MessageSquare className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-black mb-1">
+                        問い合わせを確認
+                      </h3>
+                      <p className="text-sm opacity-90">
+                        {data.stats.inquiries.new > 0
+                          ? `${data.stats.inquiries.new}件の新規問い合わせがあります`
+                          : "すべての問い合わせを管理"}
+                      </p>
+                    </div>
+                  </div>
                 </Link>
               </div>
 
-              <div className="space-y-4">
-                {RECENT_INQUIRIES.map((inquiry) => (
+              {/* 最近の施工事例 */}
+              <div className="mb-8">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-black text-gray-900">
+                    最近の施工事例
+                  </h3>
                   <Link
-                    key={inquiry.id}
-                    href={`/member/inquiries#inquiry-${inquiry.id}`}
-                    className="block p-3 rounded-xl hover:bg-gray-50 transition"
+                    href="/member/cases"
+                    className="text-sm font-medium text-blue-600 hover:text-blue-700"
                   >
-                    <div className="flex items-start justify-between mb-2">
-                      <p className="text-sm font-bold text-gray-900">
-                        {inquiry.inquirerName}
-                      </p>
-                      {getInquiryStatusBadge(inquiry.status)}
-                    </div>
-                    <p className="text-sm text-gray-600 line-clamp-2 mb-2">
-                      {inquiry.message}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      {new Date(inquiry.createdAt).toLocaleString("ja-JP")}
-                    </p>
+                    すべて見る →
                   </Link>
-                ))}
+                </div>
+
+                {data.recentCases.length === 0 ? (
+                  <div className="bg-white rounded-2xl shadow-lg p-12 border border-gray-100 text-center">
+                    <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500">まだ施工事例がありません</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {data.recentCases.map((caseItem) => (
+                      <Link
+                        key={caseItem.id}
+                        href={`/member/cases/${caseItem.id}`}
+                        className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition group"
+                      >
+                        <div className="relative h-48 overflow-hidden bg-linear-to-br from-blue-400 to-indigo-400">
+                          {caseItem.mainImageUrl ? (
+                            <img
+                              src={caseItem.mainImageUrl}
+                              alt={caseItem.title}
+                              className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <FileText className="w-16 h-16 text-white opacity-50" />
+                            </div>
+                          )}
+                          <div className="absolute top-3 right-3">
+                            <span
+                              className={`px-3 py-1 rounded-full text-xs font-bold ${
+                                caseItem.status === "PUBLISHED"
+                                  ? "bg-green-500 text-white"
+                                  : "bg-gray-500 text-white"
+                              }`}
+                            >
+                              {caseItem.status === "PUBLISHED"
+                                ? "公開"
+                                : "下書き"}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="p-4">
+                          <h4 className="font-bold text-gray-900 mb-2 line-clamp-2">
+                            {caseItem.title}
+                          </h4>
+                          <div className="flex items-center justify-between text-xs text-gray-500">
+                            <div className="flex items-center gap-1">
+                              <Eye className="h-4 w-4" />
+                              <span>{caseItem.viewCount}</span>
+                            </div>
+                            {caseItem.publishedAt && (
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-4 w-4" />
+                                <span>{formatDate(caseItem.publishedAt)}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          </div>
+
+              {/* 最近の問い合わせ */}
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-black text-gray-900">
+                    最近の問い合わせ
+                  </h3>
+                  <Link
+                    href="/member/inquiries"
+                    className="text-sm font-medium text-blue-600 hover:text-blue-700"
+                  >
+                    すべて見る →
+                  </Link>
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                  {data.recentInquiries.length === 0 ? (
+                    <div className="p-8 text-center">
+                      <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                      <p className="text-gray-500">
+                        まだ問い合わせがありません
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-gray-100">
+                      {data.recentInquiries.map((inquiry) => {
+                        const statusConfig =
+                          STATUS_CONFIG[
+                            inquiry.status as keyof typeof STATUS_CONFIG
+                          ];
+                        const StatusIcon = statusConfig.icon;
+                        return (
+                          <Link
+                            key={inquiry.id}
+                            href={`/member/inquiries/${inquiry.id}`}
+                            className="block p-6 hover:bg-gray-50 transition"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <p className="font-bold text-gray-900">
+                                    {inquiry.inquirerName}
+                                  </p>
+                                  <div
+                                    className={`flex items-center gap-1 px-2 py-1 rounded-full ${statusConfig.bgColor}`}
+                                  >
+                                    <StatusIcon
+                                      className={`h-3 w-3 ${statusConfig.color}`}
+                                    />
+                                    <span
+                                      className={`text-xs font-bold ${statusConfig.color}`}
+                                    >
+                                      {statusConfig.label}
+                                    </span>
+                                  </div>
+                                </div>
+                                <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                                  {inquiry.message}
+                                </p>
+                                <div className="flex items-center gap-2 text-xs text-gray-500">
+                                  <Calendar className="h-3 w-3" />
+                                  {formatDate(inquiry.createdAt)}
+                                </div>
+                              </div>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </main>
       </div>
     </div>

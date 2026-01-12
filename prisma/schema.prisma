@@ -23,23 +23,27 @@ model Admin {
 }
 
 model Company {
-  id          Int                @id @default(autoincrement())
-  name        String
-  description String?
-  address     String
-  prefecture  String
-  city        String
-  phoneNumber String
-  email       String             @unique
-  websiteUrl  String?
-  logoUrl     String?
-  isPublished Boolean            @default(false)
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  tags        CompanyTag[]
-  cases       ConstructionCase[]
-  inquiries   Inquiry[]
-  members     Member[]
+  id              Int                @id @default(autoincrement())
+  name            String
+  description     String?
+  address         String
+  prefecture      String
+  city            String
+  phoneNumber     String
+  email           String             @unique
+  websiteUrl      String?
+  logoUrl         String?
+  mainImageUrl    String?
+  establishedYear Int?
+  employeeCount   Int?
+  businessHours   String?
+  isPublished     Boolean            @default(false)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  tags            CompanyTag[]
+  cases           ConstructionCase[]
+  inquiries       Inquiry[]
+  members         Member[]
 
   @@index([isPublished])
   @@index([prefecture])
@@ -83,7 +87,7 @@ model Customer {
 }
 
 model ConstructionCase {
-  id             Int                   @id @default(autoincrement())
+  id             Int                     @id @default(autoincrement())
   companyId      Int
   authorId       Int
   title          String
@@ -94,19 +98,32 @@ model ConstructionCase {
   budget         Int?
   completionYear Int?
   mainImageUrl   String?
-  status         PostStatus            @default(DRAFT)
-  viewCount      Int                   @default(0)
+  status         PostStatus              @default(DRAFT)
+  viewCount      Int                     @default(0)
   publishedAt    DateTime?
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  images         ConstructionCaseImage[]
   tags           ConstructionCaseTag[]
-  author         Member                @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  company        Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  author         Member                  @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  company        Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId])
   @@index([status])
   @@index([publishedAt])
   @@map("construction_cases")
+}
+
+model ConstructionCaseImage {
+  id           Int              @id @default(autoincrement())
+  caseId       Int
+  imageUrl     String
+  displayOrder Int              @default(0)
+  createdAt    DateTime         @default(now())
+  case         ConstructionCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+  @@map("construction_case_images")
 }
 
 model Tag {
@@ -185,6 +202,37 @@ model InquiryResponse {
 
   @@index([inquiryId])
   @@map("inquiry_responses")
+}
+
+model GeneralInquiry {
+  id            Int                      @id @default(autoincrement())
+  inquirerName  String
+  inquirerEmail String
+  inquirerPhone String?
+  message       String
+  status        InquiryStatus            @default(NEW)
+  respondedAt   DateTime?
+  internalNotes String?
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+  responses     GeneralInquiryResponse[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("general_inquiries")
+}
+
+model GeneralInquiryResponse {
+  id         Int            @id @default(autoincrement())
+  inquiryId  Int
+  sender     String
+  senderName String
+  message    String
+  createdAt  DateTime       @default(now())
+  inquiry    GeneralInquiry @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+
+  @@index([inquiryId])
+  @@map("general_inquiry_responses")
 }
 
 enum MemberRole {

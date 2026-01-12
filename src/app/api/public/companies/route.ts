@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
     // フィルター条件
     const prefecture = searchParams.get("prefecture");
     const tagIds = searchParams.get("tagIds"); // カンマ区切り
+    const tag = searchParams.get("tag"); // タグ名でのフィルター
     const search = searchParams.get("search");
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "12");
@@ -37,6 +38,16 @@ export async function GET(request: NextRequest) {
         some: {
           tagId: {
             in: tagIdArray,
+          },
+        },
+      };
+    }
+
+    if (tag) {
+      where.tags = {
+        some: {
+          tag: {
+            name: tag,
           },
         },
       };

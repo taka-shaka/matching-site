@@ -1,6 +1,6 @@
 "use client";
 
-import { Mail, Phone, MapPin, Send } from "lucide-react";
+import { Mail, Phone, MapPin, Send, CheckCircle } from "lucide-react";
 import { useState } from "react";
 
 export function Contact() {
@@ -10,11 +10,51 @@ export function Contact() {
     phone: "",
     message: "",
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    try {
+      const response = await fetch("/api/general-inquiries", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "送信に失敗しました");
+      }
+
+      setSuccessMessage(
+        "お問い合わせありがとうございます。担当者より折り返しご連絡いたします。"
+      );
+      setFormData({ name: "", email: "", phone: "", message: "" });
+
+      // 3秒後にメッセージを消す
+      setTimeout(() => setSuccessMessage(""), 5000);
+    } catch (err) {
+      setErrorMessage(
+        err instanceof Error ? err.message : "送信に失敗しました"
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
     <section
       id="contact"
-      className="py-20 sm:py-32 bg-gradient-to-b from-white to-orange-50 relative overflow-hidden"
+      className="py-20 sm:py-32 bg-linear-to-b from-white to-orange-50 relative overflow-hidden"
     >
       {/* 背景装飾 */}
       <div className="absolute inset-0 overflow-hidden">
@@ -27,16 +67,16 @@ export function Contact() {
         <div className="text-center mb-16">
           <div className="inline-block mb-4">
             <div className="flex items-center gap-2">
-              <div className="h-1 w-8 bg-gradient-to-r from-red-500 to-orange-500 rounded-full"></div>
+              <div className="h-1 w-8 bg-linear-to-r from-red-500 to-orange-500 rounded-full"></div>
               <span className="text-sm font-bold text-red-600 tracking-widest uppercase">
                 Contact
               </span>
-              <div className="h-1 w-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-full"></div>
+              <div className="h-1 w-8 bg-linear-to-r from-orange-500 to-red-500 rounded-full"></div>
             </div>
           </div>
 
           <h2 className="text-4xl sm:text-5xl font-black text-gray-900 mb-6">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-orange-600">
+            <span className="text-transparent bg-clip-text bg-linear-to-r from-red-600 to-orange-600">
               お問い合わせ
             </span>
           </h2>
@@ -53,7 +93,26 @@ export function Contact() {
               メッセージを送る
             </h3>
 
-            <form className="space-y-6">
+            {/* 成功メッセージ */}
+            {successMessage && (
+              <div className="mb-6 bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
+                <CheckCircle className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
+                <p className="text-sm font-medium text-green-800">
+                  {successMessage}
+                </p>
+              </div>
+            )}
+
+            {/* エラーメッセージ */}
+            {errorMessage && (
+              <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+                <p className="text-sm font-medium text-red-800">
+                  {errorMessage}
+                </p>
+              </div>
+            )}
+
+            <form className="space-y-6" onSubmit={handleSubmit}>
               {/* お名前 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -124,10 +183,11 @@ export function Contact() {
               {/* 送信ボタン */}
               <button
                 type="submit"
-                className="w-full px-8 py-4 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-full font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 flex items-center justify-center gap-2"
+                disabled={isSubmitting}
+                className="w-full px-8 py-4 bg-linear-to-r from-red-500 to-orange-500 text-white rounded-full font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 <Send className="w-5 h-5" />
-                送信する
+                {isSubmitting ? "送信中..." : "送信する"}
               </button>
             </form>
           </div>
@@ -142,7 +202,7 @@ export function Contact() {
               <div className="space-y-6">
                 {/* 電話 */}
                 <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center">
+                  <div className="shrink-0 w-12 h-12 bg-linear-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center">
                     <Phone className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
@@ -160,7 +220,7 @@ export function Contact() {
 
                 {/* メール */}
                 <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center">
+                  <div className="shrink-0 w-12 h-12 bg-linear-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center">
                     <Mail className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
@@ -174,7 +234,7 @@ export function Contact() {
 
                 {/* 住所 */}
                 <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center">
+                  <div className="shrink-0 w-12 h-12 bg-linear-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center">
                     <MapPin className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
@@ -192,7 +252,7 @@ export function Contact() {
             </div>
 
             {/* よくある質問へのリンク */}
-            <div className="bg-gradient-to-br from-red-50 to-orange-50 rounded-3xl p-8 border-2 border-red-100">
+            <div className="bg-linear-to-br from-red-50 to-orange-50 rounded-3xl p-8 border-2 border-red-100">
               <h3 className="text-xl font-bold text-gray-900 mb-4">
                 よくあるご質問
               </h3>

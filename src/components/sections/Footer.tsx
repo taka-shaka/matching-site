@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export function Footer() {
   return (
     <footer className="bg-white border-t border-gray-200">
@@ -16,7 +18,7 @@ export function Footer() {
                 </svg>
               </div>
               <span className="text-2xl font-black text-gray-900">
-                House Match
+                House Match（仮）
               </span>
             </div>
             <p className="text-gray-600 mb-4">理想の住まいと出会える</p>
@@ -49,6 +51,14 @@ export function Footer() {
                 >
                   よくある質問
                 </a>
+              </li>
+              <li>
+                <Link
+                  href="/member/login"
+                  className="hover:text-red-600 transition-colors"
+                >
+                  法人の方はこちら
+                </Link>
               </li>
             </ul>
           </div>

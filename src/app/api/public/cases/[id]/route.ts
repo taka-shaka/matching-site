@@ -51,6 +51,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             name: true,
           },
         },
+        images: {
+          orderBy: {
+            displayOrder: "asc",
+          },
+        },
       },
     });
 

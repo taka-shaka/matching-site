@@ -1,106 +1,71 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import useSWR from "swr";
 import {
   Menu,
   Search,
-  Filter,
   MessageSquare,
   Building2,
-  FileText,
   Calendar,
   Eye,
   CheckCircle,
   Circle,
   Clock,
   XCircle,
-  ChevronDown,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import CustomerSidebar from "@/components/customer/CustomerSidebar";
+import { useAuth } from "@/lib/auth-provider";
 
-// モックデータ
-const MOCK_CUSTOMER = {
-  id: 1,
-  firstName: "花子",
-  lastName: "山田",
-  email: "hanako.yamada@example.com",
-};
+// API Fetcher
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-// 問い合わせモックデータ
-const MOCK_INQUIRIES = [
-  {
-    id: 1,
-    companyName: "株式会社ナゴヤホーム",
-    companyId: 1,
-    caseTitle: "自然素材にこだわった和モダンの家",
-    caseId: 1,
-    message:
-      "自然素材にこだわった平屋の施工事例を拝見しました。同じようなコンセプトで建築を検討しており、詳細なお話を伺いたいです。予算は3500万円程度を考えています。",
-    status: "NEW" as const,
-    createdAt: "2024-12-20T10:30:00",
-    respondedAt: null,
-  },
-  {
-    id: 2,
-    companyName: "株式会社豊田ハウジング",
-    companyId: 2,
-    caseTitle: "モダンデザインの二世帯住宅",
-    caseId: 2,
-    message:
-      "二世帯住宅を検討しています。モダンデザインの施工事例のような雰囲気が理想です。見学は可能でしょうか？",
-    status: "IN_PROGRESS" as const,
-    createdAt: "2024-12-18T14:15:00",
-    respondedAt: "2024-12-19T10:00:00",
-  },
-  {
-    id: 3,
-    companyName: "岐阜建設株式会社",
-    companyId: 3,
-    caseTitle: "開放的なリビングが魅力の家",
-    caseId: 3,
-    message:
-      "開放的なリビングが魅力の施工事例について質問があります。吹き抜けの断熱性や冷暖房効率について詳しく教えていただけますか？",
-    status: "RESOLVED" as const,
-    createdAt: "2024-12-15T09:45:00",
-    respondedAt: "2024-12-16T11:30:00",
-  },
-  {
-    id: 4,
-    companyName: "三重ホームズ株式会社",
-    companyId: 4,
-    caseTitle: null,
-    caseId: null,
-    message:
-      "ZEH住宅の施工実績について詳しく知りたいです。補助金申請のサポートもしていただけますか？",
-    status: "NEW" as const,
-    createdAt: "2024-12-19T16:20:00",
-    respondedAt: null,
-  },
-  {
-    id: 5,
-    companyName: "株式会社ナゴヤホーム",
-    companyId: 1,
-    caseTitle: null,
-    caseId: null,
-    message:
-      "和モダンな平屋に興味があります。土地探しから相談可能でしょうか？名古屋市内で検討しています。",
-    status: "IN_PROGRESS" as const,
-    createdAt: "2024-12-17T11:00:00",
-    respondedAt: "2024-12-17T15:30:00",
-  },
-  {
-    id: 6,
-    companyName: "株式会社豊田ハウジング",
-    companyId: 2,
-    caseTitle: null,
-    caseId: null,
-    message: "見積もりをお願いしたいのですが、いつ頃伺えますか？",
-    status: "CLOSED" as const,
-    createdAt: "2024-12-10T13:30:00",
-    respondedAt: "2024-12-11T09:00:00",
-  },
-];
+interface InquiryResponse {
+  id: number;
+  sender: string;
+  senderName: string;
+  message: string;
+  createdAt: string;
+}
+
+interface Company {
+  id: number;
+  name: string;
+  prefecture: string;
+  city: string;
+  logoUrl: string | null;
+}
+
+interface Inquiry {
+  id: number;
+  inquirerName: string;
+  inquirerEmail: string;
+  inquirerPhone: string | null;
+  message: string;
+  status: "NEW" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
+  createdAt: string;
+  respondedAt: string | null;
+  company: Company;
+  responses: InquiryResponse[];
+}
+
+interface InquiriesResponse {
+  inquiries: Inquiry[];
+}
+
+interface CustomerProfile {
+  customer: {
+    id: number;
+    email: string;
+    lastName: string | null;
+    firstName: string | null;
+    phoneNumber: string | null;
+  };
+}
 
 type InquiryStatus = "all" | "NEW" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
 
@@ -136,29 +101,56 @@ const STATUS_CONFIG = {
 };
 
 export default function CustomerInquiriesPage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<InquiryStatus>("all");
-  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+
+  // 認証・役割チェック
+  useEffect(() => {
+    if (!loading) {
+      if (!user) {
+        router.push("/login");
+      } else if (user.userType !== "customer") {
+        router.push("/");
+      }
+    }
+  }, [user, loading, router]);
+
+  // 問い合わせ一覧取得
+  const { data, error, isLoading } = useSWR<InquiriesResponse>(
+    "/api/customer/inquiries",
+    fetcher
+  );
+
+  // 顧客プロフィール取得
+  const { data: profileData } = useSWR<CustomerProfile>(
+    "/api/customer/profile",
+    fetcher
+  );
 
   // フィルタリングロジック
-  const filteredInquiries = MOCK_INQUIRIES.filter((inquiry) => {
-    const matchesSearch =
-      inquiry.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (inquiry.caseTitle?.toLowerCase().includes(searchQuery.toLowerCase()) ??
-        false) ||
-      inquiry.message.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus =
-      filterStatus === "all" || inquiry.status === filterStatus;
-    return matchesSearch && matchesStatus;
-  });
+  const filteredInquiries =
+    data?.inquiries.filter((inquiry) => {
+      const matchesSearch =
+        inquiry.company.name
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase()) ||
+        inquiry.message.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus =
+        filterStatus === "all" || inquiry.status === filterStatus;
+      return matchesSearch && matchesStatus;
+    }) || [];
 
   const stats = {
-    all: MOCK_INQUIRIES.length,
-    new: MOCK_INQUIRIES.filter((i) => i.status === "NEW").length,
-    inProgress: MOCK_INQUIRIES.filter((i) => i.status === "IN_PROGRESS").length,
-    resolved: MOCK_INQUIRIES.filter((i) => i.status === "RESOLVED").length,
-    closed: MOCK_INQUIRIES.filter((i) => i.status === "CLOSED").length,
+    all: data?.inquiries.length || 0,
+    new: data?.inquiries.filter((i) => i.status === "NEW").length || 0,
+    inProgress:
+      data?.inquiries.filter((i) => i.status === "IN_PROGRESS").length || 0,
+    resolved:
+      data?.inquiries.filter((i) => i.status === "RESOLVED").length || 0,
+    closed: data?.inquiries.filter((i) => i.status === "CLOSED").length || 0,
   };
 
   function formatDate(dateString: string) {
@@ -172,20 +164,41 @@ export default function CustomerInquiriesPage() {
     });
   }
 
+  // ローディング中の処理
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+      </div>
+    );
+  }
+
+  // 未認証または役割不一致の処理
+  if (!user || user.userType !== "customer") {
+    return null;
+  }
+
+  // 氏名の表示用
+  const displayName = profileData?.customer
+    ? `${profileData.customer.lastName || ""} ${profileData.customer.firstName || ""}`.trim() ||
+      user?.email ||
+      "ゲスト"
+    : user?.email || "ゲスト";
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-teal-50">
+    <div className="min-h-screen bg-linear-to-br from-orange-50 via-red-50 to-pink-50">
       {/* サイドバー */}
       <CustomerSidebar
         isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
-        customerName={`${MOCK_CUSTOMER.lastName} ${MOCK_CUSTOMER.firstName}`}
-        customerEmail={MOCK_CUSTOMER.email}
+        customerName={displayName}
+        customerEmail={user?.email || ""}
       />
 
       {/* メインコンテンツ */}
       <div className="lg:pl-64">
         {/* トップバー */}
-        <div className="sticky top-0 z-10 flex h-16 flex-shrink-0 bg-white border-b border-gray-200">
+        <div className="sticky top-0 z-10 flex h-16 shrink-0 bg-white border-b border-gray-200">
           <button
             type="button"
             className="px-4 text-gray-500 lg:hidden"
@@ -287,7 +300,7 @@ export default function CustomerInquiriesPage() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
               <input
                 type="text"
-                placeholder="工務店名、施工事例、メッセージで検索..."
+                placeholder="工務店名、メッセージで検索..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -295,91 +308,118 @@ export default function CustomerInquiriesPage() {
             </div>
           </div>
 
-          {/* 問い合わせ一覧 */}
-          {filteredInquiries.length === 0 ? (
+          {/* ローディング状態 */}
+          {isLoading && (
+            <div className="flex justify-center py-20">
+              <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+            </div>
+          )}
+
+          {/* エラー状態 */}
+          {error && (
             <div className="bg-white rounded-2xl shadow-lg p-12 border border-gray-100 text-center">
-              <MessageSquare className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg font-medium">
-                問い合わせが見つかりませんでした
+              <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+              <p className="text-gray-600 text-lg font-medium mb-4">
+                問い合わせの取得に失敗しました
               </p>
-              <p className="text-gray-400 text-sm mt-2">
-                検索条件を変更してみてください
-              </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition"
+              >
+                再読み込み
+              </button>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredInquiries.map((inquiry) => {
-                const statusConfig =
-                  STATUS_CONFIG[inquiry.status as keyof typeof STATUS_CONFIG];
-                const StatusIcon = statusConfig.icon;
+          )}
 
-                return (
-                  <Link
-                    key={inquiry.id}
-                    href={`/customer/inquiries/${inquiry.id}`}
-                    className="block bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition group"
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <Building2 className="h-5 w-5 text-gray-400" />
-                          <h3 className="font-black text-gray-900 text-lg">
-                            {inquiry.companyName}
-                          </h3>
-                        </div>
-                        {inquiry.caseTitle && (
-                          <div className="flex items-center gap-3 mb-2">
-                            <FileText className="h-5 w-5 text-gray-400" />
-                            <p className="text-sm text-gray-600">
-                              {inquiry.caseTitle}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                      <div
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${statusConfig.bgColor} flex-shrink-0`}
+          {/* 問い合わせ一覧 */}
+          {!isLoading && !error && (
+            <>
+              {filteredInquiries.length === 0 ? (
+                <div className="bg-white rounded-2xl shadow-lg p-12 border border-gray-100 text-center">
+                  <MessageSquare className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500 text-lg font-medium">
+                    問い合わせが見つかりませんでした
+                  </p>
+                  <p className="text-gray-400 text-sm mt-2">
+                    検索条件を変更してみてください
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredInquiries.map((inquiry) => {
+                    const statusConfig =
+                      STATUS_CONFIG[
+                        inquiry.status as keyof typeof STATUS_CONFIG
+                      ];
+                    const StatusIcon = statusConfig.icon;
+
+                    return (
+                      <Link
+                        key={inquiry.id}
+                        href={`/customer/inquiries/${inquiry.id}`}
+                        className="block bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition group"
                       >
-                        <StatusIcon
-                          className={`h-4 w-4 ${statusConfig.color}`}
-                        />
-                        <span
-                          className={`text-xs font-bold ${statusConfig.color}`}
-                        >
-                          {statusConfig.label}
-                        </span>
-                      </div>
-                    </div>
-
-                    <p className="text-gray-700 mb-4 line-clamp-2">
-                      {inquiry.message}
-                    </p>
-
-                    <div className="flex items-center justify-between text-sm text-gray-500">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        <span>送信日: {formatDate(inquiry.createdAt)}</span>
-                      </div>
-                      {inquiry.respondedAt && (
-                        <div className="flex items-center gap-2 text-green-600">
-                          <CheckCircle className="h-4 w-4" />
-                          <span>返信済み</span>
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <Building2 className="h-5 w-5 text-gray-400" />
+                              <h3 className="font-black text-gray-900 text-lg">
+                                {inquiry.company.name}
+                              </h3>
+                            </div>
+                            <div className="flex items-center gap-3 text-sm text-gray-500">
+                              <span>
+                                {inquiry.company.prefecture}{" "}
+                                {inquiry.company.city}
+                              </span>
+                            </div>
+                          </div>
+                          <div
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${statusConfig.bgColor} shrink-0`}
+                          >
+                            <StatusIcon
+                              className={`h-4 w-4 ${statusConfig.color}`}
+                            />
+                            <span
+                              className={`text-xs font-bold ${statusConfig.color}`}
+                            >
+                              {statusConfig.label}
+                            </span>
+                          </div>
                         </div>
-                      )}
-                    </div>
 
-                    <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
-                      <span className="text-sm text-gray-500">
-                        問い合わせID: #{inquiry.id}
-                      </span>
-                      <div className="flex items-center gap-2 text-blue-600 font-medium group-hover:gap-3 transition-all">
-                        詳細を見る
-                        <Eye className="h-4 w-4" />
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
+                        <p className="text-gray-700 mb-4 line-clamp-2">
+                          {inquiry.message}
+                        </p>
+
+                        <div className="flex items-center justify-between text-sm text-gray-500">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            <span>送信日: {formatDate(inquiry.createdAt)}</span>
+                          </div>
+                          {inquiry.respondedAt && (
+                            <div className="flex items-center gap-2 text-green-600">
+                              <CheckCircle className="h-4 w-4" />
+                              <span>返信済み</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+                          <span className="text-sm text-gray-500">
+                            問い合わせID: #{inquiry.id}
+                          </span>
+                          <div className="flex items-center gap-2 text-blue-600 font-medium group-hover:gap-3 transition-all">
+                            詳細を見る
+                            <Eye className="h-4 w-4" />
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           )}
         </main>
       </div>

@@ -1,9 +1,12 @@
 // src/app/member/inquiries/page.tsx
-// メンバー（工務店）問い合わせ管理ページ（UI実装 - モックデータ使用）
+// メンバー（工務店）問い合わせ管理ページ
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import useSWR from "swr";
 import {
   Search,
   Filter,
@@ -18,102 +21,45 @@ import {
   Clock,
   XCircle,
   MessageSquare,
-  FileText,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import MemberSidebar from "@/components/member/MemberSidebar";
+import { useAuth } from "@/lib/auth-provider";
 
-// モックデータ
-const MOCK_MEMBER = {
-  id: 1,
-  name: "山田太郎",
-  email: "yamada@nagoya-home.co.jp",
-  role: "ADMIN",
-  company: {
-    id: 1,
-    name: "株式会社ナゴヤホーム",
-    prefecture: "愛知県",
-    city: "名古屋市中区",
-    logoUrl: "https://placehold.co/120x120/f97316/white?text=NH",
-  },
-};
+// API Fetcher
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-// 問い合わせモックデータ（Prismaスキーマに準拠）
-const MOCK_INQUIRIES = [
-  {
-    id: 1,
-    inquirerName: "鈴木花子",
-    inquirerEmail: "hanako.suzuki@example.com",
-    inquirerPhone: "090-1234-5678",
-    message:
-      "自然素材にこだわった平屋の施工事例を拝見しました。同じようなコンセプトで建築を検討しており、詳細なお話を伺いたいです。予算は3500万円程度を考えています。",
-    status: "NEW" as const,
-    constructionCase: {
-      id: 1,
-      title: "自然素材にこだわった平屋の家",
-    },
-    createdAt: "2024-12-20T10:30:00",
-  },
-  {
-    id: 2,
-    inquirerName: "田中一郎",
-    inquirerEmail: "ichiro.tanaka@example.com",
-    inquirerPhone: "080-9876-5432",
-    message:
-      "二世帯住宅を検討しています。モダンデザインの施工事例のような雰囲気が理想です。見学は可能でしょうか？",
-    status: "IN_PROGRESS" as const,
-    constructionCase: {
-      id: 2,
-      title: "モダンデザインの二世帯住宅",
-    },
-    createdAt: "2024-12-18T14:15:00",
-  },
-  {
-    id: 3,
-    inquirerName: "佐藤美咲",
-    inquirerEmail: "misaki.sato@example.com",
-    inquirerPhone: "070-5555-1234",
-    message:
-      "開放的なリビングが魅力の施工事例について質問があります。吹き抜けの断熱性や冷暖房効率について詳しく教えていただけますか？",
-    status: "RESOLVED" as const,
-    constructionCase: {
-      id: 3,
-      title: "開放的なリビングが魅力の家",
-    },
-    createdAt: "2024-12-15T09:45:00",
-  },
-  {
-    id: 4,
-    inquirerName: "高橋健太",
-    inquirerEmail: "kenta.takahashi@example.com",
-    inquirerPhone: null,
-    message:
-      "ZEH住宅の施工実績について詳しく知りたいです。補助金申請のサポートもしていただけますか？",
-    status: "NEW" as const,
-    constructionCase: null,
-    createdAt: "2024-12-19T16:20:00",
-  },
-  {
-    id: 5,
-    inquirerName: "山本さくら",
-    inquirerEmail: "sakura.yamamoto@example.com",
-    inquirerPhone: "090-7777-8888",
-    message:
-      "和モダンな平屋に興味があります。土地探しから相談可能でしょうか？名古屋市内で検討しています。",
-    status: "IN_PROGRESS" as const,
-    constructionCase: null,
-    createdAt: "2024-12-17T11:00:00",
-  },
-  {
-    id: 6,
-    inquirerName: "伊藤太郎",
-    inquirerEmail: "taro.ito@example.com",
-    inquirerPhone: "080-1111-2222",
-    message: "見積もりをお願いしたいのですが、いつ頃伺えますか？",
-    status: "CLOSED" as const,
-    constructionCase: null,
-    createdAt: "2024-12-10T13:30:00",
-  },
-];
+interface Customer {
+  id: number;
+  lastName: string;
+  firstName: string;
+  email: string;
+  phoneNumber: string | null;
+}
+
+interface InquiryResponse {
+  id: number;
+  memberId: number;
+  message: string;
+  createdAt: string;
+}
+
+interface Inquiry {
+  id: number;
+  inquirerName: string;
+  inquirerEmail: string;
+  inquirerPhone: string | null;
+  message: string;
+  status: "NEW" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
+  createdAt: string;
+  customer: Customer | null;
+  responses: InquiryResponse[];
+}
+
+interface InquiriesResponse {
+  inquiries: Inquiry[];
+}
 
 type InquiryStatus = "all" | "NEW" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
 
@@ -153,25 +99,47 @@ export default function InquiriesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<InquiryStatus>("all");
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
-  const [selectedInquiry, setSelectedInquiry] = useState<number | null>(null);
+  const { user, loading } = useAuth();
+  const router = useRouter();
 
-  // フィルタリングロジック
-  const filteredInquiries = MOCK_INQUIRIES.filter((inquiry) => {
-    const matchesSearch =
+  // 認証・役割チェック
+  useEffect(() => {
+    if (!loading) {
+      if (!user) {
+        router.push("/member/login");
+      } else if (user.userType !== "member") {
+        router.push("/");
+      }
+    }
+  }, [user, loading, router]);
+
+  // ダッシュボードデータ取得（メンバー情報用）
+  const { data: dashboardData } = useSWR("/api/member/dashboard", fetcher);
+
+  // 問い合わせ一覧取得
+  const apiUrl =
+    filterStatus === "all"
+      ? "/api/member/inquiries"
+      : `/api/member/inquiries?status=${filterStatus}`;
+
+  const { data, error, isLoading } = useSWR<InquiriesResponse>(apiUrl, fetcher);
+
+  // ローカル検索フィルター
+  const filteredInquiries = data?.inquiries.filter(
+    (inquiry) =>
       inquiry.inquirerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       inquiry.inquirerEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      inquiry.message.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus =
-      filterStatus === "all" || inquiry.status === filterStatus;
-    return matchesSearch && matchesStatus;
-  });
+      inquiry.message.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const stats = {
-    all: MOCK_INQUIRIES.length,
-    new: MOCK_INQUIRIES.filter((i) => i.status === "NEW").length,
-    inProgress: MOCK_INQUIRIES.filter((i) => i.status === "IN_PROGRESS").length,
-    resolved: MOCK_INQUIRIES.filter((i) => i.status === "RESOLVED").length,
-    closed: MOCK_INQUIRIES.filter((i) => i.status === "CLOSED").length,
+    all: data?.inquiries.length || 0,
+    new: data?.inquiries.filter((i) => i.status === "NEW").length || 0,
+    inProgress:
+      data?.inquiries.filter((i) => i.status === "IN_PROGRESS").length || 0,
+    resolved:
+      data?.inquiries.filter((i) => i.status === "RESOLVED").length || 0,
+    closed: data?.inquiries.filter((i) => i.status === "CLOSED").length || 0,
   };
 
   function formatDate(dateString: string) {
@@ -185,77 +153,94 @@ export default function InquiriesPage() {
     });
   }
 
-  function handleStatusChange(inquiryId: number, newStatus: string) {
-    // TODO: 実際のステータス更新処理はAPI実装時に追加
-    alert(
-      `問い合わせID ${inquiryId} のステータスを「${STATUS_CONFIG[newStatus as keyof typeof STATUS_CONFIG].label}」に更新しました`
+  // ローディング中の処理
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+      </div>
     );
   }
 
+  // 未認証または役割不一致の処理
+  if (!user || user.userType !== "member") {
+    return null;
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-red-50 to-pink-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-teal-50">
       {/* サイドバー */}
       <MemberSidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-        memberName={MOCK_MEMBER.name}
-        memberRole={MOCK_MEMBER.role}
-        companyName={MOCK_MEMBER.company.name}
-        companyPrefecture={MOCK_MEMBER.company.prefecture}
-        companyCity={MOCK_MEMBER.company.city}
+        memberName={dashboardData?.member.name || user?.email || "メンバー"}
+        companyName={dashboardData?.company.name || ""}
+        memberRole={dashboardData?.member.role || "GENERAL"}
       />
 
       {/* メインコンテンツ */}
       <div className="lg:pl-64">
-        <main className="p-4 lg:p-8 overflow-y-auto">
-          {/* ヘッダー */}
-          <div className="mb-8">
-            <div className="flex items-center gap-4 mb-4">
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className="lg:hidden p-2 text-gray-600 hover:text-gray-900 hover:bg-white rounded-lg transition"
-              >
-                <Menu className="h-6 w-6" />
-              </button>
-              <div>
-                <h1 className="text-3xl font-black text-gray-900">
-                  問い合わせ管理
-                </h1>
-                <p className="text-gray-600 mt-1">
-                  お客様からの問い合わせを確認・管理できます
-                </p>
-              </div>
+        {/* トップバー */}
+        <div className="sticky top-0 z-10 flex h-16 shrink-0 bg-white border-b border-gray-200">
+          <button
+            type="button"
+            className="px-4 text-gray-500 lg:hidden"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <Menu className="h-6 w-6" />
+          </button>
+          <div className="flex flex-1 justify-between px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-1 items-center">
+              <h1 className="text-2xl font-black text-gray-900">
+                問い合わせ管理
+              </h1>
             </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-600">
+                {dashboardData?.member.name || user?.email}
+              </span>
+            </div>
+          </div>
+        </div>
 
+        {/* メインコンテンツエリア */}
+        <main className="p-4 lg:p-8">
+          <div className="mb-8">
             {/* ステータス統計カード */}
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-              <div className="bg-white rounded-xl shadow-lg p-4 border border-gray-100">
-                <p className="text-xs text-gray-500 mb-1">全体</p>
-                <p className="text-2xl font-black text-gray-900">{stats.all}</p>
+            {!isLoading && !error && data && (
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+                <div className="bg-white rounded-xl shadow-lg p-4 border border-gray-100">
+                  <p className="text-xs text-gray-500 mb-1">全体</p>
+                  <p className="text-2xl font-black text-gray-900">
+                    {stats.all}
+                  </p>
+                </div>
+                <div className="bg-blue-50 rounded-xl shadow-lg p-4 border border-blue-100">
+                  <p className="text-xs text-blue-600 mb-1">新規</p>
+                  <p className="text-2xl font-black text-blue-900">
+                    {stats.new}
+                  </p>
+                </div>
+                <div className="bg-orange-50 rounded-xl shadow-lg p-4 border border-orange-100">
+                  <p className="text-xs text-orange-600 mb-1">対応中</p>
+                  <p className="text-2xl font-black text-orange-900">
+                    {stats.inProgress}
+                  </p>
+                </div>
+                <div className="bg-green-50 rounded-xl shadow-lg p-4 border border-green-100">
+                  <p className="text-xs text-green-600 mb-1">解決済み</p>
+                  <p className="text-2xl font-black text-green-900">
+                    {stats.resolved}
+                  </p>
+                </div>
+                <div className="bg-gray-50 rounded-xl shadow-lg p-4 border border-gray-100">
+                  <p className="text-xs text-gray-600 mb-1">クローズ</p>
+                  <p className="text-2xl font-black text-gray-900">
+                    {stats.closed}
+                  </p>
+                </div>
               </div>
-              <div className="bg-blue-50 rounded-xl shadow-lg p-4 border border-blue-100">
-                <p className="text-xs text-blue-600 mb-1">新規</p>
-                <p className="text-2xl font-black text-blue-900">{stats.new}</p>
-              </div>
-              <div className="bg-orange-50 rounded-xl shadow-lg p-4 border border-orange-100">
-                <p className="text-xs text-orange-600 mb-1">対応中</p>
-                <p className="text-2xl font-black text-orange-900">
-                  {stats.inProgress}
-                </p>
-              </div>
-              <div className="bg-green-50 rounded-xl shadow-lg p-4 border border-green-100">
-                <p className="text-xs text-green-600 mb-1">解決済み</p>
-                <p className="text-2xl font-black text-green-900">
-                  {stats.resolved}
-                </p>
-              </div>
-              <div className="bg-gray-50 rounded-xl shadow-lg p-4 border border-gray-100">
-                <p className="text-xs text-gray-600 mb-1">クローズ</p>
-                <p className="text-2xl font-black text-gray-900">
-                  {stats.closed}
-                </p>
-              </div>
-            </div>
+            )}
 
             {/* アクションバー */}
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
@@ -342,121 +327,113 @@ export default function InquiriesPage() {
             </div>
           </div>
 
-          {/* 問い合わせ一覧 */}
-          {filteredInquiries.length === 0 ? (
-            <div className="bg-white rounded-2xl shadow-lg p-12 text-center border border-gray-100">
-              <MessageSquare className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">
-                {searchQuery
-                  ? "検索条件に一致する問い合わせが見つかりませんでした"
-                  : "まだ問い合わせがありません"}
+          {/* ローディング状態 */}
+          {isLoading && (
+            <div className="flex justify-center py-20">
+              <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+            </div>
+          )}
+
+          {/* エラー状態 */}
+          {error && (
+            <div className="bg-white rounded-2xl shadow-lg p-12 border border-gray-100 text-center">
+              <AlertCircle className="h-16 w-16 text-blue-500 mx-auto mb-4" />
+              <p className="text-gray-600 text-lg font-medium mb-4">
+                データの取得に失敗しました
               </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition"
+              >
+                再読み込み
+              </button>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredInquiries.map((inquiry) => {
-                const statusConfig =
-                  STATUS_CONFIG[inquiry.status as keyof typeof STATUS_CONFIG];
-                const StatusIcon = statusConfig.icon;
-                const isExpanded = selectedInquiry === inquiry.id;
+          )}
 
-                return (
-                  <div
-                    key={inquiry.id}
-                    className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300"
-                  >
-                    {/* ヘッダー */}
-                    <div className="p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="text-xl font-black text-gray-900">
-                              {inquiry.inquirerName}
-                            </h3>
-                            <span
-                              className={`flex items-center gap-1 px-3 py-1 text-xs font-bold rounded-full ${statusConfig.bgColor} ${statusConfig.color} ${statusConfig.borderColor} border`}
-                            >
-                              <StatusIcon className="h-3 w-3" />
-                              {statusConfig.label}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
-                            <span className="flex items-center gap-1">
-                              <Mail className="h-4 w-4" />
-                              {inquiry.inquirerEmail}
-                            </span>
-                            {inquiry.inquirerPhone && (
-                              <span className="flex items-center gap-1">
-                                <Phone className="h-4 w-4" />
-                                {inquiry.inquirerPhone}
-                              </span>
-                            )}
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-4 w-4" />
-                              {formatDate(inquiry.createdAt)}
-                            </span>
-                          </div>
-                          {inquiry.constructionCase && (
-                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-red-50 text-red-600 rounded-lg text-sm border border-red-200">
-                              <FileText className="h-4 w-4" />
-                              <span className="font-medium">
-                                施工事例: {inquiry.constructionCase.title}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        <button
-                          onClick={() =>
-                            setSelectedInquiry(isExpanded ? null : inquiry.id)
-                          }
-                          className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition"
-                        >
-                          <Eye className="h-5 w-5" />
-                        </button>
-                      </div>
+          {/* データ表示 */}
+          {!isLoading && !error && data && (
+            <>
+              {/* 問い合わせ一覧 */}
+              {filteredInquiries && filteredInquiries.length === 0 ? (
+                <div className="bg-white rounded-2xl shadow-lg p-12 text-center border border-gray-100">
+                  <MessageSquare className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500 text-lg">
+                    {searchQuery
+                      ? "検索条件に一致する問い合わせが見つかりませんでした"
+                      : "まだ問い合わせがありません"}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredInquiries?.map((inquiry) => {
+                    const statusConfig =
+                      STATUS_CONFIG[
+                        inquiry.status as keyof typeof STATUS_CONFIG
+                      ];
+                    const StatusIcon = statusConfig.icon;
 
-                      {/* メッセージプレビュー */}
-                      <p
-                        className={`text-gray-700 ${
-                          isExpanded ? "" : "line-clamp-2"
-                        }`}
+                    return (
+                      <Link
+                        key={inquiry.id}
+                        href={`/member/inquiries/${inquiry.id}`}
+                        className="block bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300"
                       >
-                        {inquiry.message}
-                      </p>
-
-                      {/* 展開時の追加コンテンツ */}
-                      {isExpanded && (
-                        <div className="mt-6 pt-6 border-t border-gray-200">
-                          <h4 className="text-sm font-bold text-gray-900 mb-3">
-                            ステータスを変更
-                          </h4>
-                          <div className="flex flex-wrap gap-2">
-                            {Object.entries(STATUS_CONFIG).map(
-                              ([status, config]) => (
-                                <button
-                                  key={status}
-                                  onClick={() =>
-                                    handleStatusChange(inquiry.id, status)
-                                  }
-                                  className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition ${
-                                    inquiry.status === status
-                                      ? `${config.bgColor} ${config.color} ${config.borderColor} border-2`
-                                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                                  }`}
+                        {/* ヘッダー */}
+                        <div className="p-6">
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-2">
+                                <h3 className="text-xl font-black text-gray-900">
+                                  {inquiry.inquirerName}
+                                </h3>
+                                <span
+                                  className={`flex items-center gap-1 px-3 py-1 text-xs font-bold rounded-full ${statusConfig.bgColor} ${statusConfig.color} ${statusConfig.borderColor} border`}
                                 >
-                                  <config.icon className="h-4 w-4" />
-                                  {config.label}
-                                </button>
-                              )
-                            )}
+                                  <StatusIcon className="h-3 w-3" />
+                                  {statusConfig.label}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-4 text-sm text-gray-600 mb-3 flex-wrap">
+                                <span className="flex items-center gap-1">
+                                  <Mail className="h-4 w-4" />
+                                  {inquiry.inquirerEmail}
+                                </span>
+                                {inquiry.inquirerPhone && (
+                                  <span className="flex items-center gap-1">
+                                    <Phone className="h-4 w-4" />
+                                    {inquiry.inquirerPhone}
+                                  </span>
+                                )}
+                                <span className="flex items-center gap-1">
+                                  <Calendar className="h-4 w-4" />
+                                  {formatDate(inquiry.createdAt)}
+                                </span>
+                              </div>
+                              {inquiry.responses.length > 0 && (
+                                <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-600 rounded-lg text-sm border border-green-200">
+                                  <MessageSquare className="h-4 w-4" />
+                                  <span className="font-medium">
+                                    返信 {inquiry.responses.length}件
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition">
+                              <Eye className="h-5 w-5" />
+                            </div>
                           </div>
+
+                          {/* メッセージプレビュー */}
+                          <p className="text-gray-700 line-clamp-2">
+                            {inquiry.message}
+                          </p>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           )}
         </main>
       </div>

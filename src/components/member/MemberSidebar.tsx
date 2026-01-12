@@ -32,9 +32,18 @@ export default function MemberSidebar({
 }: MemberSidebarProps) {
   const pathname = usePathname();
 
-  function handleLogout() {
-    // TODO: 実際のログアウト処理はAPI実装時に追加
-    window.location.href = "/member/login";
+  async function handleLogout() {
+    try {
+      // Supabaseからログアウト
+      const { createSupabaseBrowserClient } = await import("@/lib/supabase");
+      const supabase = createSupabaseBrowserClient();
+      await supabase.auth.signOut();
+      // ログインページにリダイレクト
+      window.location.href = "/member/login";
+    } catch (error) {
+      console.error("ログアウトエラー:", error);
+      window.location.href = "/member/login";
+    }
   }
 
   // ナビゲーションリンクの設定
@@ -79,10 +88,10 @@ export default function MemberSidebar({
         ${isOpen ? "" : ""}
       `}
       >
-        <div className="flex flex-col flex-grow bg-white border-r border-gray-200 pt-5 pb-4 overflow-y-auto">
+        <div className="flex flex-col grow bg-white border-r border-gray-200 pt-5 pb-4 overflow-y-auto">
           {/* ロゴ */}
-          <div className="flex items-center flex-shrink-0 px-6 mb-6">
-            <div className="w-10 h-10 bg-linear-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center">
+          <div className="flex items-center shrink-0 px-6 mb-6">
+            <div className="w-10 h-10 bg-linear-to-br from-blue-500 to-green-500 rounded-xl flex items-center justify-center">
               <Building2 className="w-6 h-6 text-white" />
             </div>
             <span className="ml-3 text-xl font-black text-gray-900">
@@ -92,7 +101,7 @@ export default function MemberSidebar({
 
           {/* 会社情報 */}
           <div className="px-6 mb-6">
-            <div className="p-4 bg-linear-to-br from-red-50 to-orange-50 rounded-xl border border-red-100">
+            <div className="p-4 bg-linear-to-br from-blue-50 to-green-50 rounded-xl border border-blue-100">
               <p className="text-xs text-gray-500 mb-1">所属工務店</p>
               <p className="text-sm font-bold text-gray-900">{companyName}</p>
               <p className="text-xs text-gray-600 mt-1">
@@ -113,7 +122,7 @@ export default function MemberSidebar({
                   href={link.href}
                   className={`group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition ${
                     active
-                      ? "bg-linear-to-r from-red-500 to-orange-500 text-white"
+                      ? "bg-linear-to-r from-blue-500 to-green-500 text-white"
                       : "text-gray-700 hover:bg-gray-100"
                   }`}
                 >
@@ -129,10 +138,10 @@ export default function MemberSidebar({
           </nav>
 
           {/* ユーザー情報 */}
-          <div className="flex-shrink-0 px-3 pb-4">
+          <div className="shrink-0 px-3 pb-4">
             <div className="flex items-center px-3 py-3 bg-gray-50 rounded-lg">
-              <div className="flex-shrink-0">
-                <div className="w-10 h-10 bg-linear-to-br from-red-400 to-orange-400 rounded-full flex items-center justify-center">
+              <div className="shrink-0">
+                <div className="w-10 h-10 bg-linear-to-br from-blue-400 to-green-400 rounded-full flex items-center justify-center">
                   <span className="text-sm font-bold text-white">
                     {memberName.charAt(0)}
                   </span>
@@ -161,7 +170,7 @@ export default function MemberSidebar({
           <div className="flex flex-col h-full">
             <div className="flex items-center justify-between p-4 border-b">
               <div className="flex items-center">
-                <div className="w-10 h-10 bg-linear-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center">
+                <div className="w-10 h-10 bg-linear-to-br from-blue-500 to-green-500 rounded-xl flex items-center justify-center">
                   <Building2 className="w-6 h-6 text-white" />
                 </div>
                 <span className="ml-3 text-xl font-black text-gray-900">
@@ -185,7 +194,7 @@ export default function MemberSidebar({
                     onClick={onClose}
                     className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg ${
                       active
-                        ? "bg-linear-to-r from-red-500 to-orange-500 text-white"
+                        ? "bg-linear-to-r from-blue-500 to-green-500 text-white"
                         : "text-gray-700 hover:bg-gray-100"
                     }`}
                   >

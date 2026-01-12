@@ -1,5 +1,5 @@
 // src/app/member/login/page.tsx
-// メンバー（工務店）ログインページ（UI実装 - モックデータ使用）
+// メンバー（工務店）ログインページ
 
 "use client";
 
@@ -7,9 +7,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Building2, Mail, Lock, AlertCircle } from "lucide-react";
+import { useAuth } from "@/lib/auth-provider";
 
 export default function MemberLoginPage() {
   const router = useRouter();
+  const { signIn } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,27 +23,56 @@ export default function MemberLoginPage() {
     setError("");
     setIsLoading(true);
 
-    // TODO: 実際の認証処理はAPI実装時に追加
-    // 現在はUI実装のみ - モックログイン
-    setTimeout(() => {
-      if (email && password) {
-        // ログイン成功としてメンバーダッシュボードへ
-        router.push("/member");
-      } else {
-        setError("メールアドレスとパスワードを入力してください");
+    try {
+      const { user, error: signInError } = await signIn(email, password);
+
+      if (signInError) {
+        // エラーメッセージを日本語に変換
+        const errorMessage = signInError.message;
+        if (errorMessage.includes("Invalid login credentials")) {
+          setError("メールアドレスまたはパスワードが正しくありません");
+        } else if (errorMessage.includes("Email not confirmed")) {
+          setError("メールアドレスが確認されていません");
+        } else if (errorMessage.includes("User not found")) {
+          setError("アカウントが見つかりません");
+        } else {
+          setError("ログインに失敗しました。入力内容をご確認ください。");
+        }
         setIsLoading(false);
+        return;
       }
-    }, 1000);
+
+      if (!user) {
+        setError("ログインに失敗しました。入力内容をご確認ください。");
+        setIsLoading(false);
+        return;
+      }
+
+      // 工務店メンバーかどうかをチェック
+      if (user.userType !== "member") {
+        setError("工務店メンバーアカウントでログインしてください");
+        setIsLoading(false);
+        return;
+      }
+
+      // ログイン成功 - メンバーダッシュボードへ
+      router.push("/member");
+      router.refresh();
+    } catch (err) {
+      console.error("Login error:", err);
+      setError("ログイン処理中にエラーが発生しました");
+      setIsLoading(false);
+    }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-orange-50 via-red-50 to-pink-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-blue-50 via-green-50 to-teal-50 py-12 px-4 sm:px-6 lg:px-8">
       {/* 背景装飾 */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-full">
-          <div className="absolute top-20 left-20 w-72 h-72 bg-red-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
-          <div className="absolute top-40 right-20 w-72 h-72 bg-orange-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
-          <div className="absolute -bottom-8 left-1/2 w-72 h-72 bg-pink-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
+          <div className="absolute top-20 left-20 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
+          <div className="absolute top-40 right-20 w-72 h-72 bg-green-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
+          <div className="absolute -bottom-8 left-1/2 w-72 h-72 bg-teal-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
         </div>
       </div>
 
@@ -49,7 +80,7 @@ export default function MemberLoginPage() {
         <div className="bg-white rounded-3xl shadow-2xl p-8 border border-gray-100">
           {/* ヘッダー */}
           <div className="text-center">
-            <div className="mx-auto h-20 w-20 bg-linear-to-br from-red-500 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg mb-6">
+            <div className="mx-auto h-20 w-20 bg-linear-to-br from-blue-500 to-green-500 rounded-2xl flex items-center justify-center shadow-lg mb-6">
               <Building2 className="h-10 w-10 text-white" />
             </div>
             <h2 className="text-3xl font-black text-gray-900 mb-2">
@@ -92,7 +123,7 @@ export default function MemberLoginPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition"
+                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                     placeholder="member@company.co.jp"
                   />
                 </div>
@@ -118,7 +149,7 @@ export default function MemberLoginPage() {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition"
+                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                     placeholder="••••••••"
                   />
                 </div>
@@ -131,7 +162,7 @@ export default function MemberLoginPage() {
                 id="remember-me"
                 name="remember-me"
                 type="checkbox"
-                className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
               <label
                 htmlFor="remember-me"
@@ -146,7 +177,7 @@ export default function MemberLoginPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="group relative flex w-full justify-center rounded-xl border border-transparent bg-linear-to-r from-red-600 to-orange-600 py-3 px-4 text-sm font-bold text-white hover:from-red-700 hover:to-orange-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
+                className="group relative flex w-full justify-center rounded-xl border border-transparent bg-linear-to-r from-blue-600 to-green-600 py-3 px-4 text-sm font-bold text-white hover:from-blue-700 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
               >
                 {isLoading ? (
                   <span className="flex items-center gap-2">
@@ -168,8 +199,8 @@ export default function MemberLoginPage() {
                 ← トップページに戻る
               </Link>
               <Link
-                href="#"
-                className="font-medium text-red-600 hover:text-red-500 transition"
+                href="/member/forgot-password"
+                className="font-medium text-blue-600 hover:text-blue-500 transition"
               >
                 パスワードを忘れた場合
               </Link>
@@ -180,7 +211,7 @@ export default function MemberLoginPage() {
           <div className="mt-6 pt-6 border-t border-gray-200">
             <p className="text-center text-xs text-gray-500">
               工務店メンバー専用ページです。一般ユーザーの方は
-              <Link href="/login" className="text-red-600 hover:text-red-500">
+              <Link href="/login" className="text-blue-600 hover:text-blue-500">
                 こちら
               </Link>
               からログインしてください。
@@ -194,20 +225,20 @@ export default function MemberLoginPage() {
         {/* お知らせカード */}
         <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
           <h3 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-red-600" />
+            <Building2 className="h-5 w-5 text-blue-600" />
             工務店メンバーの方へ
           </h3>
           <ul className="text-sm text-gray-600 space-y-2">
             <li className="flex items-start gap-2">
-              <span className="text-red-600 mt-1">•</span>
+              <span className="text-blue-600 mt-1">•</span>
               <span>施工事例の投稿・編集が可能です</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-red-600 mt-1">•</span>
+              <span className="text-blue-600 mt-1">•</span>
               <span>お問い合わせの確認・返信ができます</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-red-600 mt-1">•</span>
+              <span className="text-blue-600 mt-1">•</span>
               <span>自社情報の更新が行えます</span>
             </li>
           </ul>

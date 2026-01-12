@@ -85,9 +85,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       user: {
         authId: user.id,
-        email: user.email,
         userType,
         ...userData,
+        email: user.email, // Override with Supabase email to ensure consistency
       },
     });
   } catch (error) {

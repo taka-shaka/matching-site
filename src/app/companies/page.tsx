@@ -1,311 +1,149 @@
 // src/app/companies/page.tsx
-// 工務店一覧ページ（UI実装 - モックデータ使用）
+// 工務店一覧ページ（API連携版）
 
 "use client";
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
+import useSWR from "swr";
 import {
   MapPin,
   Search,
-  Home,
-  Menu,
-  X,
   Building2,
   Star,
   Briefcase,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
+import { Header } from "@/components/sections/Header";
+import { Footer } from "@/components/sections/Footer";
 
-// モックデータ（工務店一覧）
-const MOCK_COMPANIES = [
-  {
-    id: 1,
-    name: "株式会社ナゴヤホーム",
-    description:
-      "愛知県を中心に、お客様の理想の住まいづくりをサポートしています。自然素材を活かした健康住宅が得意です。",
-    prefecture: "愛知県",
-    city: "名古屋市中区",
-    address: "愛知県名古屋市中区栄1-2-3",
-    phoneNumber: "052-123-4567",
-    email: "info@nagoya-home.co.jp",
-    websiteUrl: "https://nagoya-home.co.jp",
-    logoUrl: null,
-    isPublished: true,
-    tags: [
-      { tag: { id: 1, name: "和モダン", category: "ATMOSPHERE" } },
-      { tag: { id: 8, name: "自然素材", category: "PREFERENCE" } },
-    ],
-    _count: {
-      cases: 12,
-    },
-  },
-  {
-    id: 2,
-    name: "東海ハウジング",
-    description:
-      "都市型住宅のプロフェッショナル。狭小地でも快適な住空間を実現します。デザイン性と機能性を両立した家づくりが強みです。",
-    prefecture: "愛知県",
-    city: "名古屋市東区",
-    address: "愛知県名古屋市東区泉1-5-10",
-    phoneNumber: "052-234-5678",
-    email: "contact@tokai-housing.jp",
-    websiteUrl: "https://tokai-housing.jp",
-    logoUrl: null,
-    isPublished: true,
-    tags: [
-      { tag: { id: 7, name: "狭小住宅", category: "HOUSE_TYPE" } },
-      { tag: { id: 2, name: "モダン", category: "ATMOSPHERE" } },
-    ],
-    _count: {
-      cases: 18,
-    },
-  },
-  {
-    id: 3,
-    name: "三河建設",
-    description:
-      "平屋・二世帯住宅の実績豊富。家族のライフスタイルに合わせた設計で、長く快適に暮らせる家を提供します。",
-    prefecture: "愛知県",
-    city: "豊田市",
-    address: "愛知県豊田市若宮町2-20-15",
-    phoneNumber: "0565-345-6789",
-    email: "info@mikawa-kensetsu.com",
-    websiteUrl: null,
-    logoUrl: null,
-    isPublished: true,
-    tags: [
-      { tag: { id: 5, name: "平屋", category: "HOUSE_TYPE" } },
-      { tag: { id: 6, name: "二世帯住宅", category: "HOUSE_TYPE" } },
-    ],
-    _count: {
-      cases: 15,
-    },
-  },
-  {
-    id: 4,
-    name: "尾張工務店",
-    description:
-      "高気密高断熱住宅のパイオニア。省エネで快適な住環境を提供し、光熱費を抑えながら一年中快適に過ごせます。",
-    prefecture: "愛知県",
-    city: "一宮市",
-    address: "愛知県一宮市本町3-10-8",
-    phoneNumber: "0586-456-7890",
-    email: "owari@koumuten.co.jp",
-    websiteUrl: "https://owari-koumuten.co.jp",
-    logoUrl: null,
-    isPublished: true,
-    tags: [
-      { tag: { id: 9, name: "高気密高断熱", category: "PREFERENCE" } },
-      { tag: { id: 10, name: "省エネ", category: "PREFERENCE" } },
-    ],
-    _count: {
-      cases: 9,
-    },
-  },
-  {
-    id: 5,
-    name: "岐阜ホームデザイン",
-    description:
-      "北欧スタイルの住宅が得意。明るく開放的な空間で、家族が自然と集まる温かい家づくりを心がけています。",
-    prefecture: "岐阜県",
-    city: "岐阜市",
-    address: "岐阜県岐阜市長住町5-15-3",
-    phoneNumber: "058-567-8901",
-    email: "info@gifu-homedesign.jp",
-    websiteUrl: "https://gifu-homedesign.jp",
-    logoUrl: null,
-    isPublished: true,
-    tags: [
-      { tag: { id: 4, name: "北欧スタイル", category: "ATMOSPHERE" } },
-      { tag: { id: 3, name: "ナチュラル", category: "ATMOSPHERE" } },
-    ],
-    _count: {
-      cases: 11,
-    },
-  },
-  {
-    id: 6,
-    name: "三重コンパクトハウス",
-    description:
-      "ローコスト住宅専門。限られた予算でも妥協しない品質とデザイン。コストパフォーマンスに優れた家づくりを実現します。",
-    prefecture: "三重県",
-    city: "津市",
-    address: "三重県津市栄町1-8-20",
-    phoneNumber: "059-678-9012",
-    email: "compact@mie-house.com",
-    websiteUrl: null,
-    logoUrl: null,
-    isPublished: true,
-    tags: [
-      { tag: { id: 11, name: "ローコスト", category: "PRICE_RANGE" } },
-      { tag: { id: 7, name: "狭小住宅", category: "HOUSE_TYPE" } },
-    ],
-    _count: {
-      cases: 14,
-    },
-  },
-];
+// API Fetcher
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-const MOCK_PREFECTURES = [
-  { prefecture: "愛知県" },
-  { prefecture: "岐阜県" },
-  { prefecture: "三重県" },
-];
+interface Tag {
+  id: number;
+  name: string;
+  category: string;
+}
 
-const MOCK_TAGS = [
-  { id: 1, name: "和モダン", category: "ATMOSPHERE", _count: { companies: 5 } },
-  { id: 2, name: "モダン", category: "ATMOSPHERE", _count: { companies: 8 } },
-  {
-    id: 3,
-    name: "ナチュラル",
-    category: "ATMOSPHERE",
-    _count: { companies: 6 },
-  },
-  {
-    id: 4,
-    name: "北欧スタイル",
-    category: "ATMOSPHERE",
-    _count: { companies: 4 },
-  },
-  { id: 5, name: "平屋", category: "HOUSE_TYPE", _count: { companies: 3 } },
-  {
-    id: 6,
-    name: "二世帯住宅",
-    category: "HOUSE_TYPE",
-    _count: { companies: 3 },
-  },
-  { id: 7, name: "狭小住宅", category: "HOUSE_TYPE", _count: { companies: 6 } },
-  {
-    id: 8,
-    name: "自然素材",
-    category: "PREFERENCE",
-    _count: { companies: 5 },
-  },
-  {
-    id: 9,
-    name: "高気密高断熱",
-    category: "PREFERENCE",
-    _count: { companies: 4 },
-  },
-  { id: 10, name: "省エネ", category: "PREFERENCE", _count: { companies: 3 } },
-];
+interface CompanyTag {
+  id: number;
+  companyId: number;
+  tagId: number;
+  createdAt: string;
+  tag: Tag;
+}
+
+interface CasePreview {
+  id: number;
+  title: string;
+  mainImageUrl: string | null;
+}
+
+interface Company {
+  id: number;
+  name: string;
+  description: string;
+  address: string;
+  prefecture: string;
+  city: string;
+  phoneNumber: string;
+  email: string;
+  websiteUrl: string | null;
+  logoUrl: string | null;
+  mainImageUrl: string | null;
+  isPublished: boolean;
+  createdAt: string;
+  updatedAt: string;
+  tags: CompanyTag[];
+  cases: CasePreview[];
+  _count: {
+    cases: number;
+  };
+}
+
+interface CompaniesResponse {
+  companies: Company[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
 
 export default function CompaniesPage() {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const totalCount = MOCK_COMPANIES.length;
-  const currentPage = 1;
-  const totalPages = 1;
-  const itemsPerPage = 12;
-  const searchQuery = "";
-  const prefectureFilter = "";
-  const tagFilter = "";
+  const [searchQuery, setSearchQuery] = useState("");
+  const [prefectureFilter, setPrefectureFilter] = useState("");
+  const [tagFilter, setTagFilter] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
-  const navItems = [
-    { label: "工務店検索", href: "/companies", active: true },
-    { label: "施工事例", href: "/cases" },
-    { label: "家づくりの流れ", href: "/#process" },
-    { label: "無料相談", href: "/#contact" },
-  ];
+  // APIパラメータ構築
+  const buildApiUrl = () => {
+    const params = new URLSearchParams();
+    if (searchQuery) params.append("search", searchQuery);
+    if (prefectureFilter) params.append("prefecture", prefectureFilter);
+    if (tagFilter) params.append("tag", tagFilter);
+    params.append("page", currentPage.toString());
+    params.append("limit", "12");
+
+    return `/api/public/companies?${params.toString()}`;
+  };
+
+  // データ取得
+  const { data, error, isLoading } = useSWR<CompaniesResponse>(
+    buildApiUrl(),
+    fetcher
+  );
+
+  // 都道府県一覧（固定値）
+  const PREFECTURES = ["愛知県", "岐阜県", "三重県"];
+
+  // 人気タグをAPIから取得
+  const { data: tagsData } = useSWR<{
+    tags: Array<{
+      id: number;
+      name: string;
+      category: string;
+      companyCount: number;
+      caseCount: number;
+    }>;
+  }>("/api/tags?withCounts=true", fetcher);
+
+  // 工務店数でソートして上位10件を抽出（カウント0のタグも表示）
+  const POPULAR_TAGS = (tagsData?.tags || [])
+    .sort((a, b) => b.companyCount - a.companyCount)
+    .slice(0, 15)
+    .map((tag) => ({ name: tag.name, count: tag.companyCount }));
+
+  // 検索ハンドラー
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCurrentPage(1);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* ヘッダー */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-15">
-            <Link
-              href="/"
-              className="flex items-center gap-3 cursor-pointer group"
-            >
-              <div className="w-12 h-12 bg-linear-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                <Home className="w-7 h-7 text-white" />
-              </div>
-              <span className="text-2xl font-black text-gray-900 hidden sm:block">
-                House Match（仮）
-              </span>
-            </Link>
-
-            <nav className="hidden lg:flex items-center gap-8">
-              {navItems.map((item, index) => (
-                <a
-                  key={index}
-                  href={item.href}
-                  className={`text-base font-medium transition-colors duration-200 relative group ${
-                    item.active
-                      ? "text-red-600 font-bold"
-                      : "text-gray-700 hover:text-red-600"
-                  }`}
-                >
-                  {item.label}
-                  <span
-                    className={`absolute bottom-0 left-0 h-0.5 bg-linear-to-r from-red-500 to-orange-500 transition-all duration-300 ${
-                      item.active ? "w-full" : "w-0 group-hover:w-full"
-                    }`}
-                  ></span>
-                </a>
-              ))}
-            </nav>
-
-            <div className="hidden lg:flex items-center gap-3">
-              <button className="px-6 py-2.5 text-sm font-bold text-red-600 bg-white border-2 border-red-200 rounded-full hover:bg-red-50 transition-all duration-300 hover:scale-105">
-                新規登録
-              </button>
-              <button className="px-6 py-2.5 text-sm font-bold text-white bg-linear-to-r from-red-500 to-orange-500 rounded-full shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105">
-                ログイン
-              </button>
-            </div>
-
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="lg:hidden p-2 text-gray-700 hover:text-red-600 transition-colors"
-            >
-              {isMobileMenuOpen ? (
-                <X className="w-6 h-6" />
-              ) : (
-                <Menu className="w-6 h-6" />
-              )}
-            </button>
-          </div>
-        </div>
-
-        {isMobileMenuOpen && (
-          <div className="lg:hidden bg-white border-t border-gray-200 shadow-lg">
-            <div className="px-4 py-6 space-y-4">
-              {navItems.map((item, index) => (
-                <a
-                  key={index}
-                  href={item.href}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className={`block py-3 px-4 text-base font-medium rounded-xl transition-all duration-200 ${
-                    item.active
-                      ? "text-red-600 bg-red-50 font-bold"
-                      : "text-gray-700 hover:text-red-600 hover:bg-red-50"
-                  }`}
-                >
-                  {item.label}
-                </a>
-              ))}
-              <div className="pt-4 space-y-3 border-t border-gray-200">
-                <button className="w-full px-6 py-3 text-sm font-bold text-red-600 bg-white border-2 border-red-200 rounded-full hover:bg-red-50 transition-all duration-300">
-                  新規登録
-                </button>
-                <button className="w-full px-6 py-3 text-sm font-bold text-white bg-linear-to-r from-red-500 to-orange-500 rounded-full shadow-md hover:shadow-lg transition-all duration-300">
-                  ログイン
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </header>
+      <Header />
 
       {/* メインコンテンツ */}
       <main className="pt-[60px]">
         {/* ヒーローセクション */}
-        <section className="relative bg-linear-to-br from-red-500 to-orange-500 text-white py-20 overflow-hidden">
-          {/* 背景装飾 */}
+        <section className="relative text-white py-20 overflow-hidden">
+          {/* 背景画像 */}
           <div className="absolute inset-0">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
-            <div className="absolute bottom-0 left-0 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
+            <Image
+              src="/images/companies-hero-bg.jpg"
+              alt="工務店を探す"
+              fill
+              sizes="100vw"
+              className="object-cover"
+              priority
+            />
+            {/* テキスト視認性向上のためのオーバーレイ */}
+            <div className="absolute inset-0 bg-linear-to-br from-black/60 via-black/50 to-black/60"></div>
           </div>
 
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -314,21 +152,21 @@ export default function CompaniesPage() {
                 工務店を探す
               </h1>
               <p className="text-lg sm:text-xl text-white/90 max-w-2xl mx-auto mb-8">
-                {totalCount}
+                {data?.pagination.total || 0}
                 社の工務店から、あなたにぴったりのパートナーを見つけましょう
               </p>
 
               {/* 検索バー */}
               <form
-                method="GET"
+                onSubmit={handleSearch}
                 className="max-w-2xl mx-auto bg-white rounded-full p-2 shadow-2xl"
               >
                 <div className="flex items-center gap-2">
                   <Search className="w-5 h-5 text-gray-400 ml-4" />
                   <input
                     type="text"
-                    name="search"
-                    defaultValue={searchQuery}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="工務店名や特徴で検索..."
                     className="flex-1 px-4 py-3 text-gray-900 placeholder-gray-500 focus:outline-none rounded-full"
                   />
@@ -359,14 +197,17 @@ export default function CompaniesPage() {
                 <div className="mb-6">
                   <h3 className="font-bold text-gray-900 mb-3">都道府県</h3>
                   <select
-                    name="prefecture"
-                    defaultValue={prefectureFilter}
+                    value={prefectureFilter}
+                    onChange={(e) => {
+                      setPrefectureFilter(e.target.value);
+                      setCurrentPage(1);
+                    }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   >
                     <option value="">すべて</option>
-                    {MOCK_PREFECTURES.map((p) => (
-                      <option key={p.prefecture} value={p.prefecture}>
-                        {p.prefecture}
+                    {PREFECTURES.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
                       </option>
                     ))}
                   </select>
@@ -376,28 +217,34 @@ export default function CompaniesPage() {
                 <div>
                   <h3 className="font-bold text-gray-900 mb-3">得意分野</h3>
                   <div className="space-y-2">
-                    <Link
-                      href="/companies"
-                      className={`block px-3 py-2 rounded-lg text-sm transition-colors ${
+                    <button
+                      onClick={() => {
+                        setTagFilter("");
+                        setCurrentPage(1);
+                      }}
+                      className={`block w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
                         !tagFilter
                           ? "bg-linear-to-r from-red-50 to-orange-50 text-red-700 font-medium"
                           : "text-gray-600 hover:bg-gray-50"
                       }`}
                     >
-                      すべて ({totalCount})
-                    </Link>
-                    {MOCK_TAGS.map((tag) => (
-                      <Link
-                        key={tag.id}
-                        href={`/companies?tag=${encodeURIComponent(tag.name)}`}
-                        className={`block px-3 py-2 rounded-lg text-sm transition-colors ${
+                      すべて ({data?.pagination.total || 0})
+                    </button>
+                    {POPULAR_TAGS.map((tag) => (
+                      <button
+                        key={tag.name}
+                        onClick={() => {
+                          setTagFilter(tag.name);
+                          setCurrentPage(1);
+                        }}
+                        className={`block w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
                           tagFilter === tag.name
                             ? "bg-linear-to-r from-red-50 to-orange-50 text-red-700 font-medium"
                             : "text-gray-600 hover:bg-gray-50"
                         }`}
                       >
-                        {tag.name} ({tag._count.companies})
-                      </Link>
+                        {tag.name} ({tag.count})
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -406,209 +253,205 @@ export default function CompaniesPage() {
 
             {/* 工務店一覧 */}
             <div className="lg:col-span-3">
-              {/* 結果表示 */}
-              <div className="mb-6 flex items-center justify-between">
-                <p className="text-gray-600">
-                  全{" "}
-                  <span className="font-bold text-gray-900">{totalCount}</span>{" "}
-                  社の工務店
-                </p>
-                <select className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
-                  <option>おすすめ順</option>
-                  <option>施工事例が多い順</option>
-                  <option>新着順</option>
-                </select>
-              </div>
+              {/* ローディング状態 */}
+              {isLoading && (
+                <div className="flex flex-col items-center justify-center py-20">
+                  <Loader2 className="w-12 h-12 text-red-500 animate-spin mb-4" />
+                  <p className="text-gray-600">読み込み中...</p>
+                </div>
+              )}
 
-              {/* グリッドレイアウト */}
-              <div className="grid md:grid-cols-2 gap-6 mb-12">
-                {MOCK_COMPANIES.map((company) => (
-                  <Link
-                    key={company.id}
-                    href={`/companies/${company.id}`}
-                    className="group bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 overflow-hidden"
+              {/* エラー状態 */}
+              {error && (
+                <div className="flex flex-col items-center justify-center py-20">
+                  <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
+                  <p className="text-gray-600 mb-4">
+                    データの取得に失敗しました
+                  </p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
                   >
-                    {/* ヘッダー部分 */}
-                    <div className="bg-linear-to-br from-red-400 to-orange-400 p-6 relative overflow-hidden">
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
-                      <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+                    再読み込み
+                  </button>
+                </div>
+              )}
 
-                      <div className="relative flex items-center gap-4">
-                        {/* ロゴ/アイコン */}
-                        <div className="w-20 h-20 bg-white/90 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                          <Building2 className="w-10 h-10 text-red-500" />
-                        </div>
+              {/* データ表示 */}
+              {!isLoading && !error && data && (
+                <>
+                  {/* 結果表示 */}
+                  <div className="mb-6 flex items-center justify-between">
+                    <p className="text-gray-600">
+                      全{" "}
+                      <span className="font-bold text-gray-900">
+                        {data.pagination.total}
+                      </span>{" "}
+                      社の工務店
+                    </p>
+                    <select className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+                      <option>おすすめ順</option>
+                      <option>施工事例が多い順</option>
+                      <option>新着順</option>
+                    </select>
+                  </div>
 
-                        <div className="flex-1">
-                          <h3 className="text-xl font-bold text-white mb-1 group-hover:scale-105 transition-transform duration-300">
-                            {company.name}
-                          </h3>
-                          <div className="flex items-center gap-2 text-white/90 text-sm">
-                            <MapPin className="w-4 h-4" />
-                            <span>
-                              {company.prefecture} {company.city}
-                            </span>
+                  {/* 空データ */}
+                  {data.companies.length === 0 && (
+                    <div className="text-center py-20">
+                      <p className="text-gray-600 text-lg">
+                        条件に一致する工務店が見つかりませんでした
+                      </p>
+                    </div>
+                  )}
+
+                  {/* グリッドレイアウト */}
+                  <div className="grid md:grid-cols-2 gap-6 mb-12">
+                    {data.companies.map((company) => (
+                      <Link
+                        key={company.id}
+                        href={`/companies/${company.id}`}
+                        className="group bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 overflow-hidden"
+                      >
+                        {/* ヘッダー部分 */}
+                        <div className="p-6 relative overflow-hidden h-40">
+                          {/* 背景画像またはグラデーション */}
+                          {company.mainImageUrl ? (
+                            <>
+                              <Image
+                                src={company.mainImageUrl}
+                                alt={company.name}
+                                fill
+                                sizes="(max-width: 768px) 100vw, 50vw"
+                                className="object-cover"
+                              />
+                              {/* テキスト視認性向上のためのグラデーションオーバーレイ */}
+                              <div className="absolute inset-0 bg-linear-to-b from-transparent via-black/30 to-black/70"></div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="absolute inset-0 bg-linear-to-br from-red-400 to-orange-400"></div>
+                              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+                              <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+                            </>
+                          )}
+
+                          <div className="relative z-10 flex items-center gap-4 h-full">
+                            {/* ロゴ/アイコン */}
+                            <div className="w-20 h-20 bg-white/90 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300 relative overflow-hidden">
+                              {company.logoUrl ? (
+                                <Image
+                                  src={company.logoUrl}
+                                  alt={company.name}
+                                  fill
+                                  sizes="80px"
+                                  className="object-cover rounded-2xl"
+                                />
+                              ) : (
+                                <Building2 className="w-10 h-10 text-red-500" />
+                              )}
+                            </div>
+
+                            <div className="flex-1">
+                              <h3 className="text-xl font-bold text-white mb-1 group-hover:scale-105 transition-transform duration-300 [text-shadow:0_2px_8px_rgb(0_0_0/80%)]">
+                                {company.name}
+                              </h3>
+                              <div className="flex items-center gap-2 text-white text-sm [text-shadow:0_1px_4px_rgb(0_0_0/60%)]">
+                                <MapPin className="w-4 h-4 drop-shadow-lg" />
+                                <span>
+                                  {company.prefecture} {company.city}
+                                </span>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </div>
 
-                    {/* コンテンツ部分 */}
-                    <div className="p-6">
-                      <p className="text-gray-600 text-sm mb-4 line-clamp-3">
-                        {company.description}
-                      </p>
+                        {/* コンテンツ部分 */}
+                        <div className="p-6">
+                          <p className="text-gray-600 text-sm mb-4 line-clamp-3">
+                            {company.description}
+                          </p>
 
-                      {/* タグ */}
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {company.tags.slice(0, 3).map((ct, idx) => (
-                          <span
-                            key={idx}
-                            className="px-3 py-1 bg-linear-to-r from-red-50 to-orange-50 text-red-700 text-xs font-medium rounded-full border border-red-100"
-                          >
-                            {ct.tag.name}
-                          </span>
-                        ))}
-                      </div>
+                          {/* タグ */}
+                          <div className="flex flex-wrap gap-2 mb-4">
+                            {company.tags.slice(0, 3).map((ct) => (
+                              <span
+                                key={ct.id}
+                                className="px-3 py-1 bg-linear-to-r from-red-50 to-orange-50 text-red-700 text-xs font-medium rounded-full border border-red-100"
+                              >
+                                {ct.tag.name}
+                              </span>
+                            ))}
+                            {company.tags.length > 3 && (
+                              <span className="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
+                                +{company.tags.length - 3}
+                              </span>
+                            )}
+                          </div>
 
-                      {/* メタ情報 */}
-                      <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Briefcase className="w-4 h-4 text-orange-500" />
-                          <span>施工事例 {company._count.cases}件</span>
+                          {/* メタ情報 */}
+                          <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <Briefcase className="w-4 h-4 text-orange-500" />
+                              <span>施工事例 {company._count.cases}件</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-sm text-gray-600">
+                              <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                              <span className="font-bold">4.8</span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1 text-sm text-gray-600">
-                          <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                          <span className="font-bold">4.8</span>
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-
-              {/* ページネーション */}
-              {totalPages > 1 && (
-                <div className="flex justify-center gap-2">
-                  {currentPage > 1 && (
-                    <Link
-                      href={`/companies?page=${currentPage - 1}`}
-                      className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      前へ
-                    </Link>
-                  )}
-
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                    (page) => (
-                      <Link
-                        key={page}
-                        href={`/companies?page=${page}`}
-                        className={`px-4 py-2 rounded-lg transition-colors ${
-                          page === currentPage
-                            ? "bg-linear-to-r from-red-500 to-orange-500 text-white font-bold"
-                            : "border border-gray-300 hover:bg-gray-50"
-                        }`}
-                      >
-                        {page}
                       </Link>
-                    )
-                  )}
+                    ))}
+                  </div>
 
-                  {currentPage < totalPages && (
-                    <Link
-                      href={`/companies?page=${currentPage + 1}`}
-                      className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      次へ
-                    </Link>
+                  {/* ページネーション */}
+                  {data.pagination.totalPages > 1 && (
+                    <div className="flex justify-center gap-2">
+                      {currentPage > 1 && (
+                        <button
+                          onClick={() => setCurrentPage(currentPage - 1)}
+                          className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                          前へ
+                        </button>
+                      )}
+
+                      {Array.from(
+                        { length: data.pagination.totalPages },
+                        (_, i) => i + 1
+                      ).map((page) => (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`px-4 py-2 rounded-lg transition-colors ${
+                            page === currentPage
+                              ? "bg-linear-to-r from-red-500 to-orange-500 text-white font-bold"
+                              : "border border-gray-300 hover:bg-gray-50"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+
+                      {currentPage < data.pagination.totalPages && (
+                        <button
+                          onClick={() => setCurrentPage(currentPage + 1)}
+                          className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                          次へ
+                        </button>
+                      )}
+                    </div>
                   )}
-                </div>
+                </>
               )}
             </div>
           </div>
         </div>
       </main>
 
-      {/* フッター */}
-      <footer className="bg-white border-t border-gray-200 mt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid md:grid-cols-4 gap-8 mb-12">
-            <div className="md:col-span-2">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 bg-linear-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center">
-                  <svg
-                    className="w-8 h-8 text-white"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-                  </svg>
-                </div>
-                <span className="text-2xl font-black text-gray-900">
-                  House Match
-                </span>
-              </div>
-              <p className="text-gray-600 mb-4">理想の住まいと出会える</p>
-            </div>
-
-            <div>
-              <h4 className="font-bold text-gray-900 mb-4">サービス</h4>
-              <ul className="space-y-2 text-gray-600">
-                <li>
-                  <Link
-                    href="/companies"
-                    className="hover:text-red-600 transition-colors"
-                  >
-                    工務店を探す
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/cases"
-                    className="hover:text-red-600 transition-colors"
-                  >
-                    施工事例
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/#contact"
-                    className="hover:text-red-600 transition-colors"
-                  >
-                    よくある質問
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-bold text-gray-900 mb-4">会社情報</h4>
-              <ul className="space-y-2 text-gray-600">
-                <li>
-                  <a href="#" className="hover:text-red-600 transition-colors">
-                    運営会社
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-red-600 transition-colors">
-                    利用規約
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-red-600 transition-colors">
-                    プライバシーポリシー
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="text-center text-gray-600 text-sm pt-8 border-t border-gray-200">
-            © 2026 House Match（仮）. All rights reserved.
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

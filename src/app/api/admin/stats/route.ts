@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     // 最近のアクティビティを取得（各種データを統合）
-    const recentActivities = [];
+    const recentActivities: any[] = [];
 
     // 最近の工務店登録（5件）
     const recentCompanies = await prisma.company.findMany({

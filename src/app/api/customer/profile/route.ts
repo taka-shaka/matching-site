@@ -6,89 +6,73 @@ import { requireCustomer } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 
 // プロフィール取得
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const { customer } = await requireCustomer();
 
-    return NextResponse.json({ customer });
+    return NextResponse.json({
+      customer: {
+        id: customer.id,
+        email: customer.email,
+        lastName: customer.lastName,
+        firstName: customer.firstName,
+        phoneNumber: customer.phoneNumber,
+      },
+    });
   } catch (error) {
     console.error("Failed to get customer profile:", error);
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    // 認証エラーの場合
+    if (error instanceof Error && error.message.includes("redirect")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    return NextResponse.json(
+      { error: "Failed to get profile" },
+      { status: 500 }
+    );
   }
 }
 
 // プロフィール更新
-export async function PATCH(request: NextRequest) {
+export async function PUT(request: NextRequest) {
   try {
     const { customer } = await requireCustomer();
     const body = await request.json();
 
     // バリデーション
-    const updateData: any = {};
-
-    if (body.lastName !== undefined) {
-      updateData.lastName = body.lastName.trim() || null;
+    if (!body.lastName?.trim() || !body.firstName?.trim()) {
+      return NextResponse.json({ error: "姓と名は必須です" }, { status: 400 });
     }
 
-    if (body.firstName !== undefined) {
-      updateData.firstName = body.firstName.trim() || null;
+    // 電話番号のバリデーション（入力されている場合のみ）
+    if (body.phoneNumber && !/^[0-9-]+$/.test(body.phoneNumber)) {
+      return NextResponse.json(
+        { error: "電話番号の形式が正しくありません" },
+        { status: 400 }
+      );
     }
 
-    if (body.phoneNumber !== undefined) {
-      // 電話番号のフォーマットチェック（オプション）
-      if (body.phoneNumber && !/^[0-9-]+$/.test(body.phoneNumber)) {
-        return NextResponse.json(
-          { error: "Invalid phone number format" },
-          { status: 400 }
-        );
-      }
-      updateData.phoneNumber = body.phoneNumber.trim() || null;
-    }
-
-    if (body.email !== undefined) {
-      // メールアドレスのバリデーション
-      if (!body.email || !body.email.includes("@")) {
-        return NextResponse.json(
-          { error: "Invalid email address" },
-          { status: 400 }
-        );
-      }
-
-      // メールアドレスが既に使用されていないかチェック
-      const existingCustomer = await prisma.customer.findUnique({
-        where: { email: body.email },
-      });
-
-      if (existingCustomer && existingCustomer.id !== customer.id) {
-        return NextResponse.json(
-          { error: "Email address already in use" },
-          { status: 400 }
-        );
-      }
-
-      updateData.email = body.email.trim();
-    }
-
-    // データベース更新
+    // プロフィール更新
     const updatedCustomer = await prisma.customer.update({
       where: { id: customer.id },
-      data: updateData,
-      select: {
-        id: true,
-        email: true,
-        lastName: true,
-        firstName: true,
-        phoneNumber: true,
-        isActive: true,
-        lastLoginAt: true,
-        createdAt: true,
-        updatedAt: true,
+      data: {
+        lastName: body.lastName.trim(),
+        firstName: body.firstName.trim(),
+        phoneNumber: body.phoneNumber?.trim() || null,
       },
     });
 
     return NextResponse.json({
       success: true,
-      customer: updatedCustomer,
+      message: "プロフィールを更新しました",
+      customer: {
+        id: updatedCustomer.id,
+        email: updatedCustomer.email,
+        lastName: updatedCustomer.lastName,
+        firstName: updatedCustomer.firstName,
+        phoneNumber: updatedCustomer.phoneNumber,
+      },
     });
   } catch (error) {
     console.error("Failed to update customer profile:", error);

@@ -17,6 +17,8 @@ export interface AuthUser {
   emailVerified?: boolean;
   userType?: "admin" | "member" | "customer";
   companyId?: number;
+  name?: string; // 表示名（顧客の場合は姓名、メンバーの場合は名前、管理者の場合は名前）
+  phoneNumber?: string; // 電話番号（顧客の場合のみ）
   metadata?: Record<string, unknown>;
 }
 
@@ -261,12 +263,31 @@ class SupabaseAuthProvider implements AuthProvider {
   // ========================================
 
   private mapUser(supabaseUser: User): AuthUser {
+    // user_metadataから氏名を取得
+    const userType = supabaseUser.app_metadata?.user_type || "customer";
+    let displayName: string | undefined;
+
+    if (userType === "customer") {
+      // 顧客: 姓名を結合
+      const lastName = supabaseUser.user_metadata?.last_name;
+      const firstName = supabaseUser.user_metadata?.first_name;
+      if (lastName && firstName) {
+        displayName = `${lastName} ${firstName}`;
+      } else if (lastName || firstName) {
+        displayName = lastName || firstName;
+      }
+    } else if (userType === "member" || userType === "admin") {
+      // メンバー・管理者: nameフィールドを使用
+      displayName = supabaseUser.user_metadata?.name;
+    }
+
     return {
       id: supabaseUser.id,
       email: supabaseUser.email!,
       emailVerified: !!supabaseUser.email_confirmed_at,
-      userType: supabaseUser.app_metadata?.user_type || "customer",
+      userType,
       companyId: supabaseUser.app_metadata?.company_id,
+      name: displayName,
       metadata: supabaseUser.user_metadata,
     };
   }

@@ -13,7 +13,9 @@ export async function GET(request: NextRequest) {
     const minBudget = searchParams.get("minBudget");
     const maxBudget = searchParams.get("maxBudget");
     const tagIds = searchParams.get("tagIds"); // カンマ区切り
+    const tag = searchParams.get("tag"); // タグ名でのフィルター
     const search = searchParams.get("search");
+    const companyId = searchParams.get("companyId");
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "12");
 
@@ -24,6 +26,10 @@ export async function GET(request: NextRequest) {
 
     if (prefecture) {
       where.prefecture = prefecture;
+    }
+
+    if (companyId) {
+      where.companyId = parseInt(companyId);
     }
 
     if (minBudget || maxBudget) {
@@ -49,6 +55,16 @@ export async function GET(request: NextRequest) {
         some: {
           tagId: {
             in: tagIdArray,
+          },
+        },
+      };
+    }
+
+    if (tag) {
+      where.tags = {
+        some: {
+          tag: {
+            name: tag,
           },
         },
       };
@@ -85,6 +101,12 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             name: true,
+          },
+        },
+        images: {
+          take: 1,
+          orderBy: {
+            displayOrder: "asc",
           },
         },
       },

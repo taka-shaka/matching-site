@@ -45,6 +45,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             },
           },
         },
+        images: {
+          orderBy: {
+            displayOrder: "asc",
+          },
+        },
       },
     });
 
@@ -174,6 +179,24 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       // 下書きに戻す場合、publishedAtをnullに
       if (body.status === "DRAFT") {
         updateData.publishedAt = null;
+      }
+    }
+
+    // タグの更新処理
+    if (body.tagIds !== undefined && Array.isArray(body.tagIds)) {
+      // 既存のタグを全て削除
+      await prisma.constructionCaseTag.deleteMany({
+        where: { caseId: parseInt(id) },
+      });
+
+      // 新しいタグを追加
+      if (body.tagIds.length > 0) {
+        await prisma.constructionCaseTag.createMany({
+          data: body.tagIds.map((tagId: number) => ({
+            caseId: parseInt(id),
+            tagId: tagId,
+          })),
+        });
       }
     }
 

@@ -161,6 +161,10 @@ export async function PATCH(request: NextRequest) {
       updateData.logoUrl = body.logoUrl || null;
     }
 
+    if (body.mainImageUrl !== undefined) {
+      updateData.mainImageUrl = body.mainImageUrl || null;
+    }
+
     if (body.isPublished !== undefined) {
       updateData.isPublished = Boolean(body.isPublished);
     }

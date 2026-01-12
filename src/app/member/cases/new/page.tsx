@@ -1,11 +1,12 @@
 // src/app/member/cases/new/page.tsx
-// メンバー（工務店）施工事例新規作成ページ（UI実装 - モックデータ使用）
+// メンバー（工務店）施工事例新規作成ページ
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Building2,
   Home,
@@ -16,53 +17,37 @@ import {
   ArrowLeft,
   Save,
   Eye,
-  Upload,
   X,
-  Plus,
   Menu,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
+import { useAuth } from "@/lib/auth-provider";
+import TempImageUploader from "@/components/TempImageUploader";
 
-// モックデータ
-const MOCK_MEMBER = {
-  id: 1,
-  name: "山田太郎",
-  email: "yamada@nagoya-home.co.jp",
-  role: "ADMIN",
+interface MemberData {
+  member: {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+  };
   company: {
-    id: 1,
-    name: "株式会社ナゴヤホーム",
-    prefecture: "愛知県",
-    city: "名古屋市中区",
-    logoUrl: "https://placehold.co/120x120/f97316/white?text=NH",
-  },
-};
+    id: number;
+    name: string;
+    prefecture: string;
+    city: string;
+    logoUrl: string | null;
+  };
+}
 
-// 利用可能なタグ（Prismaスキーマに準拠）
-const AVAILABLE_TAGS = [
-  { id: 1, name: "平屋", category: "HOUSE_TYPE" },
-  { id: 2, name: "2階建て", category: "HOUSE_TYPE" },
-  { id: 3, name: "3階建て", category: "HOUSE_TYPE" },
-  { id: 4, name: "二世帯", category: "HOUSE_TYPE" },
-  { id: 5, name: "2000万円未満", category: "PRICE_RANGE" },
-  { id: 6, name: "2000-3000万円", category: "PRICE_RANGE" },
-  { id: 7, name: "3000-4000万円", category: "PRICE_RANGE" },
-  { id: 8, name: "4000-5000万円", category: "PRICE_RANGE" },
-  { id: 9, name: "5000万円以上", category: "PRICE_RANGE" },
-  { id: 10, name: "木造", category: "STRUCTURE" },
-  { id: 11, name: "鉄骨", category: "STRUCTURE" },
-  { id: 12, name: "RC造", category: "STRUCTURE" },
-  { id: 13, name: "モダン", category: "ATMOSPHERE" },
-  { id: 14, name: "和モダン", category: "ATMOSPHERE" },
-  { id: 15, name: "ナチュラル", category: "ATMOSPHERE" },
-  { id: 16, name: "北欧", category: "ATMOSPHERE" },
-  { id: 17, name: "開放感", category: "PREFERENCE" },
-  { id: 18, name: "省エネ", category: "PREFERENCE" },
-  { id: 19, name: "バリアフリー", category: "PREFERENCE" },
-  { id: 20, name: "収納充実", category: "PREFERENCE" },
-];
+interface Tag {
+  id: number;
+  name: string;
+  category: string;
+}
 
-const TAG_CATEGORIES = {
+const TAG_CATEGORIES: Record<string, string> = {
   HOUSE_TYPE: "住宅タイプ",
   PRICE_RANGE: "価格帯",
   STRUCTURE: "構造",
@@ -122,7 +107,53 @@ const PREFECTURES = [
 
 export default function NewCasePage() {
   const router = useRouter();
+  const { user, loading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // データ取得状態
+  const [memberData, setMemberData] = useState<MemberData | null>(null);
+  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+
+  // 認証・役割チェック
+  useEffect(() => {
+    if (!loading) {
+      if (!user) {
+        router.push("/member/login");
+      } else if (user.userType !== "member") {
+        router.push("/");
+      }
+    }
+  }, [user, loading, router]);
+
+  // メンバー情報とタグデータを取得
+  useEffect(() => {
+    async function fetchData() {
+      if (!user || user.userType !== "member") return;
+
+      try {
+        // メンバー情報を取得
+        const memberResponse = await fetch("/api/member/dashboard");
+        if (memberResponse.ok) {
+          const memberResult = await memberResponse.json();
+          setMemberData(memberResult);
+        }
+
+        // タグ一覧を取得
+        const tagsResponse = await fetch("/api/tags");
+        if (tagsResponse.ok) {
+          const tagsResult = await tagsResponse.json();
+          setAvailableTags(tagsResult.tags || []);
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setIsLoadingData(false);
+      }
+    }
+
+    fetchData();
+  }, [user]);
 
   // フォームの状態
   const [title, setTitle] = useState("");
@@ -133,12 +164,24 @@ export default function NewCasePage() {
   const [budget, setBudget] = useState("");
   const [completionYear, setCompletionYear] = useState("");
   const [selectedTags, setSelectedTags] = useState<number[]>([]);
-  const [mainImageUrl, setMainImageUrl] = useState("");
-  const [additionalImages, setAdditionalImages] = useState<string[]>([]);
-  const [status, setStatus] = useState<"DRAFT" | "PUBLISHED">("DRAFT");
+  const [uploadedImageUrls, setUploadedImageUrls] = useState<string[]>([]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ローディング中は何も表示しない
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+      </div>
+    );
+  }
+
+  // 未認証またはメンバー以外の場合は何も表示しない（リダイレクト中）
+  if (!user || user.userType !== "member") {
+    return null;
+  }
 
   function handleLogout() {
     window.location.href = "/member/login";
@@ -152,15 +195,12 @@ export default function NewCasePage() {
     }
   }
 
-  function handleAddImage() {
-    // TODO: 実際の画像アップロード処理はAPI実装時に追加
-    // モックとしてプレースホルダー画像を追加
-    const newImageUrl = `https://placehold.co/800x600/f97316/white?text=Image+${additionalImages.length + 1}`;
-    setAdditionalImages([...additionalImages, newImageUrl]);
+  function handleImageUpload(url: string) {
+    setUploadedImageUrls([...uploadedImageUrls, url]);
   }
 
   function handleRemoveImage(index: number) {
-    setAdditionalImages(additionalImages.filter((_, i) => i !== index));
+    setUploadedImageUrls(uploadedImageUrls.filter((_, i) => i !== index));
   }
 
   function validateForm(): boolean {
@@ -186,21 +226,58 @@ export default function NewCasePage() {
       return;
     }
 
-    setStatus(saveStatus);
     setIsSubmitting(true);
 
-    // TODO: 実際の保存処理はAPI実装時に追加
-    // 現在はUI実装のみ - モック保存
-    setTimeout(() => {
+    try {
+      const response = await fetch("/api/member/cases", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title,
+          description,
+          prefecture,
+          city,
+          buildingArea: parseFloat(buildingArea),
+          budget: parseInt(budget) * 10000, // 万円を円に変換
+          completionYear: parseInt(completionYear),
+          status: saveStatus,
+          tagIds: selectedTags,
+          imageUrls: uploadedImageUrls, // アップロード済みの画像URL配列
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create case");
+      }
+
+      const result = await response.json();
       alert(
         saveStatus === "DRAFT" ? "下書きとして保存しました" : "公開しました"
       );
-      router.push("/member/cases");
-    }, 1000);
+      router.push(`/member/cases/${result.case.id}`);
+    } catch (error) {
+      console.error("Error creating case:", error);
+      alert("施工事例の作成に失敗しました");
+      setIsSubmitting(false);
+    }
+  }
+
+  // データ読み込み中の表示
+  if (isLoadingData) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-blue-50 via-green-50 to-teal-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">読み込み中...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-orange-50 via-red-50 to-pink-50">
+    <div className="flex min-h-screen bg-linear-to-br from-blue-50 via-green-50 to-teal-50">
       {/* サイドバー */}
       <aside
         className={`
@@ -214,7 +291,7 @@ export default function NewCasePage() {
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-linear-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
+                <div className="w-12 h-12 bg-linear-to-br from-blue-500 to-green-500 rounded-xl flex items-center justify-center shadow-lg">
                   <Building2 className="h-6 w-6 text-white" />
                 </div>
                 <div>
@@ -233,24 +310,14 @@ export default function NewCasePage() {
             </div>
 
             {/* 会社情報カード */}
-            <div className="bg-gradient-to-br from-red-50 to-orange-50 rounded-xl p-4 border border-red-100">
-              <div className="flex items-center gap-3 mb-3">
-                {MOCK_MEMBER.company.logoUrl && (
-                  <img
-                    src={MOCK_MEMBER.company.logoUrl}
-                    alt={MOCK_MEMBER.company.name}
-                    className="w-12 h-12 rounded-lg object-cover border-2 border-white shadow"
-                  />
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-gray-900 truncate">
-                    {MOCK_MEMBER.company.name}
-                  </p>
-                  <p className="text-xs text-gray-600">
-                    {MOCK_MEMBER.company.prefecture} {MOCK_MEMBER.company.city}
-                  </p>
-                </div>
-              </div>
+            <div className="bg-linear-to-br from-blue-50 to-green-50 rounded-xl p-4 border border-blue-100">
+              <p className="text-xs text-gray-500 mb-1">所属工務店</p>
+              <p className="text-sm font-bold text-gray-900 truncate">
+                {memberData?.company.name || "読み込み中..."}
+              </p>
+              <p className="text-xs text-gray-600 mt-1">
+                {memberData?.company.prefecture} {memberData?.company.city}
+              </p>
             </div>
           </div>
 
@@ -265,7 +332,7 @@ export default function NewCasePage() {
             </Link>
             <Link
               href="/member/cases"
-              className="flex items-center gap-3 px-4 py-3 bg-linear-to-r from-red-500 to-orange-500 text-white rounded-xl shadow-lg"
+              className="flex items-center gap-3 px-4 py-3 bg-linear-to-r from-blue-500 to-green-500 text-white rounded-xl shadow-lg"
             >
               <FileText className="h-5 w-5" />
               <span className="font-medium">施工事例管理</span>
@@ -289,21 +356,21 @@ export default function NewCasePage() {
           {/* ユーザー情報とログアウト */}
           <div className="p-4 border-t border-gray-200">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 bg-linear-to-br from-red-400 to-orange-400 rounded-full flex items-center justify-center text-white font-bold shadow">
-                {MOCK_MEMBER.name.charAt(0)}
+              <div className="w-10 h-10 bg-linear-to-br from-blue-400 to-green-400 rounded-full flex items-center justify-center text-white font-bold shadow">
+                {memberData?.member.name.charAt(0) || "M"}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-gray-900 truncate">
-                  {MOCK_MEMBER.name}
+                  {memberData?.member.name || "メンバー"}
                 </p>
                 <p className="text-xs text-gray-500 truncate">
-                  {MOCK_MEMBER.email}
+                  {memberData?.member.role || "MEMBER"}
                 </p>
               </div>
             </div>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition"
+              className="flex items-center gap-2 w-full px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition"
             >
               <LogOut className="h-4 w-4" />
               <span>ログアウト</span>
@@ -348,14 +415,14 @@ export default function NewCasePage() {
 
         {/* エラーメッセージ */}
         {Object.keys(errors).length > 0 && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
             <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+              <AlertCircle className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="font-bold text-red-900 mb-2">
+                <p className="font-bold text-blue-900 mb-2">
                   入力内容に問題があります
                 </p>
-                <ul className="text-sm text-red-800 space-y-1">
+                <ul className="text-sm text-blue-800 space-y-1">
                   {Object.values(errors).map((error, index) => (
                     <li key={index}>• {error}</li>
                   ))}
@@ -374,7 +441,7 @@ export default function NewCasePage() {
             {/* タイトル */}
             <div className="mb-6">
               <label className="block text-sm font-bold text-gray-700 mb-2">
-                タイトル <span className="text-red-600">*</span>
+                タイトル <span className="text-blue-600">*</span>
               </label>
               <input
                 type="text"
@@ -382,7 +449,7 @@ export default function NewCasePage() {
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="例：自然素材にこだわった平屋の家"
                 className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition ${
-                  errors.title ? "border-red-500" : "border-gray-300"
+                  errors.title ? "border-blue-500" : "border-gray-300"
                 }`}
               />
             </div>
@@ -390,7 +457,7 @@ export default function NewCasePage() {
             {/* 説明 */}
             <div className="mb-6">
               <label className="block text-sm font-bold text-gray-700 mb-2">
-                説明 <span className="text-red-600">*</span>
+                説明 <span className="text-blue-600">*</span>
               </label>
               <textarea
                 value={description}
@@ -398,7 +465,7 @@ export default function NewCasePage() {
                 placeholder="施工事例の詳細な説明を入力してください"
                 rows={6}
                 className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition resize-none ${
-                  errors.description ? "border-red-500" : "border-gray-300"
+                  errors.description ? "border-blue-500" : "border-gray-300"
                 }`}
               />
             </div>
@@ -407,13 +474,13 @@ export default function NewCasePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">
-                  都道府県 <span className="text-red-600">*</span>
+                  都道府県 <span className="text-blue-600">*</span>
                 </label>
                 <select
                   value={prefecture}
                   onChange={(e) => setPrefecture(e.target.value)}
                   className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition ${
-                    errors.prefecture ? "border-red-500" : "border-gray-300"
+                    errors.prefecture ? "border-blue-500" : "border-gray-300"
                   }`}
                 >
                   <option value="">選択してください</option>
@@ -426,7 +493,7 @@ export default function NewCasePage() {
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">
-                  市区町村 <span className="text-red-600">*</span>
+                  市区町村 <span className="text-blue-600">*</span>
                 </label>
                 <input
                   type="text"
@@ -434,7 +501,7 @@ export default function NewCasePage() {
                   onChange={(e) => setCity(e.target.value)}
                   placeholder="例：名古屋市中区"
                   className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition ${
-                    errors.city ? "border-red-500" : "border-gray-300"
+                    errors.city ? "border-blue-500" : "border-gray-300"
                   }`}
                 />
               </div>
@@ -444,7 +511,7 @@ export default function NewCasePage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">
-                  延床面積 (㎡) <span className="text-red-600">*</span>
+                  延床面積 (㎡) <span className="text-blue-600">*</span>
                 </label>
                 <input
                   type="number"
@@ -453,13 +520,13 @@ export default function NewCasePage() {
                   onChange={(e) => setBuildingArea(e.target.value)}
                   placeholder="95.5"
                   className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition ${
-                    errors.buildingArea ? "border-red-500" : "border-gray-300"
+                    errors.buildingArea ? "border-blue-500" : "border-gray-300"
                   }`}
                 />
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">
-                  予算 (万円) <span className="text-red-600">*</span>
+                  予算 (万円) <span className="text-blue-600">*</span>
                 </label>
                 <input
                   type="number"
@@ -467,13 +534,13 @@ export default function NewCasePage() {
                   onChange={(e) => setBudget(e.target.value)}
                   placeholder="3500"
                   className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition ${
-                    errors.budget ? "border-red-500" : "border-gray-300"
+                    errors.budget ? "border-blue-500" : "border-gray-300"
                   }`}
                 />
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">
-                  完成年 <span className="text-red-600">*</span>
+                  完成年 <span className="text-blue-600">*</span>
                 </label>
                 <input
                   type="number"
@@ -481,7 +548,9 @@ export default function NewCasePage() {
                   onChange={(e) => setCompletionYear(e.target.value)}
                   placeholder="2024"
                   className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition ${
-                    errors.completionYear ? "border-red-500" : "border-gray-300"
+                    errors.completionYear
+                      ? "border-blue-500"
+                      : "border-gray-300"
                   }`}
                 />
               </div>
@@ -491,14 +560,14 @@ export default function NewCasePage() {
           {/* タグ選択 */}
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
             <h2 className="text-xl font-black text-gray-900 mb-2">
-              タグ <span className="text-red-600">*</span>
+              タグ <span className="text-blue-600">*</span>
             </h2>
             <p className="text-sm text-gray-600 mb-6">
               施工事例の特徴を表すタグを選択してください（複数選択可）
             </p>
 
             {errors.tags && (
-              <p className="text-sm text-red-600 mb-4">{errors.tags}</p>
+              <p className="text-sm text-blue-600 mb-4">{errors.tags}</p>
             )}
 
             {Object.entries(TAG_CATEGORIES).map(([category, label]) => (
@@ -507,22 +576,22 @@ export default function NewCasePage() {
                   {label}
                 </h3>
                 <div className="flex flex-wrap gap-2">
-                  {AVAILABLE_TAGS.filter(
-                    (tag) => tag.category === category
-                  ).map((tag) => (
-                    <button
-                      key={tag.id}
-                      type="button"
-                      onClick={() => toggleTag(tag.id)}
-                      className={`px-4 py-2 text-sm font-medium rounded-full transition ${
-                        selectedTags.includes(tag.id)
-                          ? "bg-red-600 text-white shadow-lg"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      }`}
-                    >
-                      {tag.name}
-                    </button>
-                  ))}
+                  {availableTags
+                    .filter((tag: Tag) => tag.category === category)
+                    .map((tag: Tag) => (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() => toggleTag(tag.id)}
+                        className={`px-4 py-2 text-sm font-medium rounded-full transition ${
+                          selectedTags.includes(tag.id)
+                            ? "bg-blue-600 text-white shadow-lg"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        {tag.name}
+                      </button>
+                    ))}
                 </div>
               </div>
             ))}
@@ -532,85 +601,50 @@ export default function NewCasePage() {
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
             <h2 className="text-xl font-black text-gray-900 mb-2">画像</h2>
             <p className="text-sm text-gray-600 mb-6">
-              施工事例の写真を追加してください
+              施工事例の写真を追加してください（最大10枚）
             </p>
 
-            {/* メイン画像 */}
-            <div className="mb-6">
-              <label className="block text-sm font-bold text-gray-700 mb-2">
-                メイン画像
-              </label>
-              <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-red-500 transition">
-                <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-sm text-gray-600 mb-2">
-                  クリックまたはドラッグ&ドロップで画像をアップロード
-                </p>
-                <p className="text-xs text-gray-500">
-                  推奨サイズ: 1200 x 800px (PNG, JPG)
-                </p>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setMainImageUrl(
-                      "https://placehold.co/1200x800/f97316/white?text=Main+Image"
-                    )
-                  }
-                  className="mt-4 px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-sm font-medium"
-                >
-                  画像を選択（モック）
-                </button>
-              </div>
-              {mainImageUrl && (
-                <div className="mt-4 relative">
-                  <img
-                    src={mainImageUrl}
-                    alt="メイン画像"
-                    className="w-full h-64 object-cover rounded-xl"
+            {/* アップロード済み画像一覧 */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              {uploadedImageUrls.map((imageUrl, index) => (
+                <div key={index} className="relative h-32">
+                  <Image
+                    src={imageUrl}
+                    alt={`画像 ${index + 1}`}
+                    fill
+                    sizes="(max-width: 768px) 50vw, 25vw"
+                    className="object-cover rounded-xl"
                   />
                   <button
                     type="button"
-                    onClick={() => setMainImageUrl("")}
-                    className="absolute top-2 right-2 p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                    onClick={() => handleRemoveImage(index)}
+                    className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition shadow-lg z-10"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-3 w-3" />
                   </button>
+                  {index === 0 && (
+                    <div className="absolute bottom-1 left-1 px-2 py-1 bg-blue-600 text-white text-xs font-bold rounded z-10">
+                      メイン
+                    </div>
+                  )}
                 </div>
-              )}
+              ))}
             </div>
 
-            {/* 追加画像 */}
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">
-                追加画像（最大10枚）
-              </label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {additionalImages.map((imageUrl, index) => (
-                  <div key={index} className="relative">
-                    <img
-                      src={imageUrl}
-                      alt={`追加画像 ${index + 1}`}
-                      className="w-full h-32 object-cover rounded-xl"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveImage(index)}
-                      className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
-                {additionalImages.length < 10 && (
-                  <button
-                    type="button"
-                    onClick={handleAddImage}
-                    className="h-32 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center hover:border-red-500 transition"
-                  >
-                    <Plus className="h-8 w-8 text-gray-400" />
-                  </button>
-                )}
+            {/* 新規画像アップロード */}
+            {uploadedImageUrls.length < 10 && (
+              <TempImageUploader
+                onUploadComplete={handleImageUpload}
+                label="画像を追加"
+                description="クリックまたはドラッグ&ドロップで画像をアップロード"
+              />
+            )}
+
+            {uploadedImageUrls.length >= 10 && (
+              <div className="text-center text-sm text-gray-500 py-4">
+                画像は最大10枚までアップロードできます
               </div>
-            </div>
+            )}
           </div>
 
           {/* アクションボタン */}
@@ -629,7 +663,7 @@ export default function NewCasePage() {
                 type="button"
                 onClick={() => handleSubmit("PUBLISHED")}
                 disabled={isSubmitting}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-linear-to-r from-red-600 to-orange-600 text-white rounded-xl hover:from-red-700 hover:to-orange-700 transition shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-linear-to-r from-blue-600 to-green-600 text-white rounded-xl hover:from-blue-700 hover:to-green-700 transition shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Eye className="h-5 w-5" />
                 <span className="font-bold">

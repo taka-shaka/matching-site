@@ -51,11 +51,23 @@ export function Features() {
   ];
 
   return (
-    <section className="py-20 sm:py-32 bg-gradient-to-b from-white to-orange-50 relative overflow-hidden">
+    <section className="py-20 sm:py-32 bg-linear-to-b from-white to-orange-50 relative overflow-hidden">
       {/* 背景装飾 */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-1/4 -left-20 w-96 h-96 bg-red-200/20 rounded-full blur-3xl"></div>
         <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-orange-200/20 rounded-full blur-3xl"></div>
+      </div>
+
+      {/* 下部の波線デザイン - Features section から Cases section への遷移 */}
+      <div className="absolute bottom-0 left-0 right-0">
+        <svg
+          className="w-full h-16 sm:h-24 text-white"
+          viewBox="0 0 1440 120"
+          fill="currentColor"
+          preserveAspectRatio="none"
+        >
+          <path d="M0,64L48,69.3C96,75,192,85,288,80C384,75,480,53,576,48C672,43,768,53,864,58.7C960,64,1056,64,1152,58.7C1248,53,1344,43,1392,37.3L1440,32L1440,120L1392,120C1344,120,1248,120,1152,120C1056,120,960,120,864,120C768,120,672,120,576,120C480,120,384,120,288,120C192,120,96,120,48,120L0,120Z"></path>
+        </svg>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -63,18 +75,18 @@ export function Features() {
         <div className="text-center mb-20">
           <div className="inline-block mb-4">
             <div className="flex items-center gap-2">
-              <div className="h-1 w-8 bg-gradient-to-r from-red-500 to-orange-500 rounded-full"></div>
+              <div className="h-1 w-8 bg-linear-to-r from-red-500 to-orange-500 rounded-full"></div>
               <span className="text-sm font-bold text-red-600 tracking-widest uppercase">
                 Feature
               </span>
-              <div className="h-1 w-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-full"></div>
+              <div className="h-1 w-8 bg-linear-to-r from-orange-500 to-red-500 rounded-full"></div>
             </div>
           </div>
 
           <h2 className="text-4xl sm:text-5xl font-black text-gray-900 mb-6">
             4つのステップで
             <br className="sm:hidden" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-orange-600">
+            <span className="text-transparent bg-clip-text bg-linear-to-r from-red-600 to-orange-600">
               理想の家づくり
             </span>
           </h2>
@@ -96,7 +108,7 @@ export function Features() {
               {/* イラストエリア */}
               <div className="flex-1 w-full">
                 <div
-                  className={`relative bg-gradient-to-br ${feature.bgColor} rounded-3xl p-12 shadow-xl h-80 flex items-center justify-center overflow-hidden`}
+                  className={`relative bg-linear-to-br{feature.bgColor} rounded-3xl p-12 shadow-xl h-80 flex items-center justify-center overflow-hidden`}
                 >
                   {/* 装飾的な円 */}
                   <div className="absolute top-10 right-10 w-32 h-32 bg-white/30 rounded-full blur-2xl"></div>
@@ -116,7 +128,7 @@ export function Features() {
                     {/* 番号バッジ */}
                     <div className="absolute -top-4 -right-4 w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-lg">
                       <span
-                        className={`text-2xl font-black text-transparent bg-clip-text bg-gradient-to-br ${feature.color}`}
+                        className={`text-2xl font-black text-transparent bg-clip-text bg-linear-to-br ${feature.color}`}
                       >
                         {feature.number}
                       </span>
@@ -129,7 +141,7 @@ export function Features() {
               <div className="flex-1 w-full text-center lg:text-left">
                 <div className="mb-4">
                   <span
-                    className={`text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r ${feature.color} tracking-widest uppercase`}
+                    className={`text-sm font-bold text-transparent bg-clip-text bg-linear-to-r ${feature.color} tracking-widest uppercase`}
                   >
                     {feature.subtitle}
                   </span>
@@ -144,7 +156,7 @@ export function Features() {
                 </p>
 
                 <button
-                  className={`px-8 py-4 bg-gradient-to-r ${feature.color} text-white rounded-full font-bold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105`}
+                  className={`px-8 py-4 bg-linear-to-r ${feature.color} text-white rounded-full font-bold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105`}
                 >
                   詳しく見る
                 </button>

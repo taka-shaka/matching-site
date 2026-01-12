@@ -200,6 +200,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       updateData.logoUrl = body.logoUrl || null;
     }
 
+    if (body.mainImageUrl !== undefined) {
+      updateData.mainImageUrl = body.mainImageUrl || null;
+    }
+
     if (body.isPublished !== undefined) {
       updateData.isPublished = Boolean(body.isPublished);
     }
@@ -241,6 +245,64 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(
       { error: "Failed to update company" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
+  try {
+    await requireAdmin();
+    const { id } = await params;
+
+    // 工務店が存在するか確認
+    const existingCompany = await prisma.company.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        _count: {
+          select: {
+            members: true,
+            cases: true,
+            inquiries: true,
+          },
+        },
+      },
+    });
+
+    if (!existingCompany) {
+      return NextResponse.json({ error: "Company not found" }, { status: 404 });
+    }
+
+    // 削除前の確認情報を取得
+    const deletionInfo = {
+      companyId: existingCompany.id,
+      companyName: existingCompany.name,
+      memberCount: existingCompany._count.members,
+      caseCount: existingCompany._count.cases,
+      inquiryCount: existingCompany._count.inquiries,
+    };
+
+    // 工務店を削除（CASCADE設定により関連データも自動削除）
+    // Members, Cases, Inquiries, CompanyTagsなどが連鎖削除される
+    await prisma.company.delete({
+      where: { id: parseInt(id) },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "Company deleted successfully",
+      deletionInfo,
+    });
+  } catch (error) {
+    console.error("Failed to delete company:", error);
+
+    // 認証エラーの場合
+    if (error instanceof Error && error.message.includes("redirect")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    return NextResponse.json(
+      { error: "Failed to delete company" },
       { status: 500 }
     );
   }

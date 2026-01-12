@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Search, Users, FileText, Hammer, Key, Sparkles } from "lucide-react";
 
 export function Process() {
@@ -55,11 +56,20 @@ export function Process() {
   ];
 
   return (
-    <section className="py-20 sm:py-32 bg-white relative overflow-hidden">
-      {/* 背景装飾 */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/3 left-0 w-full h-px bg-gradient-to-r from-transparent via-red-200 to-transparent"></div>
-        <div className="absolute top-2/3 left-0 w-full h-px bg-gradient-to-r from-transparent via-orange-200 to-transparent"></div>
+    <section
+      id="process"
+      className="py-20 sm:py-32 bg-red-50 relative overflow-hidden"
+    >
+      {/* 下部の波線デザイン */}
+      <div className="absolute bottom-0 left-0 right-0">
+        <svg
+          className="w-full h-16 sm:h-24 text-red-50"
+          viewBox="0 0 1440 120"
+          fill="currentColor"
+          preserveAspectRatio="none"
+        >
+          <path d="M0,64L48,69.3C96,75,192,85,288,80C384,75,480,53,576,48C672,43,768,53,864,58.7C960,64,1056,64,1152,58.7C1248,53,1344,43,1392,37.3L1440,32L1440,120L1392,120C1344,120,1248,120,1152,120C1056,120,960,120,864,120C768,120,672,120,576,120C480,120,384,120,288,120C192,120,96,120,48,120L0,120Z"></path>
+        </svg>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -67,17 +77,17 @@ export function Process() {
         <div className="text-center mb-20">
           <div className="inline-block mb-4">
             <div className="flex items-center gap-2">
-              <div className="h-1 w-8 bg-gradient-to-r from-red-500 to-orange-500 rounded-full"></div>
+              <div className="h-1 w-8 bg-linear-to-r from-red-500 to-orange-500 rounded-full"></div>
               <span className="text-sm font-bold text-red-600 tracking-widest uppercase">
                 Process
               </span>
-              <div className="h-1 w-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-full"></div>
+              <div className="h-1 w-8 bg-linear-to-r from-orange-500 to-red-500 rounded-full"></div>
             </div>
           </div>
 
           <h2 className="text-4xl sm:text-5xl font-black text-gray-900 mb-6">
             家づくりの
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-orange-600">
+            <span className="text-transparent bg-clip-text bg-linear-to-r from-red-600 to-orange-600">
               流れ
             </span>
           </h2>
@@ -90,23 +100,23 @@ export function Process() {
         {/* プロセスタイムライン */}
         <div className="relative">
           {/* 接続線（デスクトップ） */}
-          <div className="hidden xl:block absolute top-20 left-0 right-0 h-1 bg-gradient-to-r from-red-200 via-orange-200 to-red-200 rounded-full"></div>
+          <div className="hidden xl:block absolute top-20 left-0 right-0 h-1 bg-linear-to-r from-red-200 via-orange-200 to-red-200 rounded-full"></div>
 
           {/* 接続線（タブレット - 1行目） */}
-          <div className="hidden lg:block xl:hidden absolute top-20 left-0 right-0 h-1 bg-gradient-to-r from-red-200 via-orange-200 to-red-200 rounded-full"></div>
+          <div className="hidden lg:block xl:hidden absolute top-20 left-0 right-0 h-1 bg-linear-to-r from-red-200 via-orange-200 to-red-200 rounded-full"></div>
 
           {/* 接続線（タブレット - 2行目） */}
-          <div className="hidden lg:block xl:hidden absolute top-[calc(50%+20px)] left-0 right-0 h-1 bg-gradient-to-r from-red-200 via-orange-200 to-red-200 rounded-full"></div>
+          <div className="hidden lg:block xl:hidden absolute top-[calc(50%+20px)] left-0 right-0 h-1 bg-linear-to-rrom-red-200 via-orange-200 to-red-200 rounded-full"></div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 lg:gap-8">
             {steps.map((step, index) => (
               <div key={index} className="relative">
                 {/* ステップカード */}
-                <div className="relative bg-gradient-to-br from-red-50 to-orange-50 rounded-3xl p-4 xl:p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-2 group h-full flex flex-col">
+                <div className="relative bg-linear-to-br from-red-50 to-orange-50 rounded-3xl p-4 xl:p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-2 group h-full flex flex-col">
                   {/* 番号バッジ */}
                   <div className="absolute -top-4 xl:-top-5 left-1/2 -translate-x-1/2">
                     <div
-                      className={`w-12 h-12 xl:w-14 xl:h-14 bg-gradient-to-br ${step.color} rounded-2xl flex items-center justify-center shadow-lg transform group-hover:rotate-12 transition-transform duration-300`}
+                      className={`w-12 h-12 xl:w-14 xl:h-14 bg-linear-to-br ${step.color} rounded-2xl flex items-center justify-center shadow-lg transform group-hover:rotate-12 transition-transform duration-300`}
                     >
                       <span className="text-xl xl:text-2xl font-black text-white">
                         {step.number}
@@ -139,7 +149,7 @@ export function Process() {
                 {/* 接続線（モバイルのみ） */}
                 {index < steps.length - 1 && (
                   <div className="md:hidden flex justify-center my-4">
-                    <div className="w-1 h-8 bg-gradient-to-b from-red-300 to-orange-300 rounded-full"></div>
+                    <div className="w-1 h-8 bg-linear-to-b from-red-300 to-orange-300 rounded-full"></div>
                   </div>
                 )}
               </div>
@@ -149,7 +159,7 @@ export function Process() {
 
         {/* CTAセクション */}
         <div className="mt-20 text-center">
-          <div className="bg-gradient-to-r from-red-500 to-orange-500 rounded-3xl p-12 shadow-2xl relative overflow-hidden">
+          <div className="bg-linear-to-r from-red-500 to-orange-500 rounded-3xl p-12 shadow-2xl relative overflow-hidden">
             {/* 背景装飾 */}
             <div className="absolute inset-0 overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
@@ -163,9 +173,11 @@ export function Process() {
               <p className="text-white/90 text-lg mb-8 max-w-2xl mx-auto">
                 専門のアドバイザーが、あなたの家づくりをサポートします
               </p>
-              <button className="px-10 py-4 bg-white text-red-600 rounded-full font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-                無料相談を予約する
-              </button>
+              <Link href="/#contact">
+                <button className="px-10 py-4 bg-white text-red-600 rounded-full font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+                  無料相談を予約する
+                </button>
+              </Link>
             </div>
           </div>
         </div>
