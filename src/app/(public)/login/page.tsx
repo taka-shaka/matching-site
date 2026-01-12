@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { User, Mail, Lock, AlertCircle, CheckCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth-provider";
 import { translateAuthError } from "@/lib/auth-errors";
 
-export default function LoginPage() {
+// SearchParamsを使用するコンポーネントを分離
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { signIn, loading: authLoading } = useAuth();
@@ -269,5 +270,23 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// メインのページコンポーネント（Suspenseでラップ）
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-orange-50 via-red-50 to-pink-50">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">読み込み中...</p>
+          </div>
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }
