@@ -4,14 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
+    "build": "prisma generate && next build --turbopack",
     "start": "next start",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
     "seed": "tsx prisma/seed.ts",
     "reset-auth": "tsx prisma/reset-auth.ts",
-    "seed:fresh": "npm run reset-auth && npm run seed"
+    "seed:fresh": "npm run reset-auth && npm run seed",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.1.0",
