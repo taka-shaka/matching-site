@@ -61,3 +61,12 @@ next-env.d.ts
 
 # OS
 Thumbs.db
+
+# 開発用スクリプト（デバッグ・テスト用の一時ファイル）
+check_admin.js
+check_auth.js
+check_db.js
+cleanup_and_seed.js
+create_admin_db.js
+delete_auth_users.js
+get_admin_auth.js

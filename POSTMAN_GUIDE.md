@@ -1,6 +1,7 @@
 # Postman APIテストガイド
 
 ## 📋 目次
+
 1. [Postmanコレクションのインポート](#postmanコレクションのインポート)
 2. [認証トークンの取得方法](#認証トークンの取得方法)
 3. [テストの実行方法](#テストの実行方法)
@@ -12,7 +13,7 @@
 
 ### VS Code拡張機能を使用する場合
 
-1. VS Codeの拡張機能タブから「Postman」を検索してインストール
+1. VS Codeの拡張機能![alt text](image.png)タブから「Postman」を検索してインストール
 2. サイドバーのPostmanアイコンをクリック
 3. 「Import」ボタンをクリック
 4. `postman_collection.json` ファイルを選択してインポート
@@ -41,18 +42,22 @@
 5. 以下のテストアカウントでログイン：
 
 **管理者アカウント:**
+
 - Email: `admin@matching-site.jp`
 - Password: `admin123456`
 
 **工務店メンバーアカウント（ナゴヤホーム）:**
+
 - Email: `tanaka@nagoya-home.co.jp`
 - Password: `member123456`
 
 **工務店メンバーアカウント（豊田ハウジング）:**
+
 - Email: `yamada@toyota-housing.co.jp`
 - Password: `member123456`
 
 **顧客アカウント:**
+
 - Email: `customer1@example.com`
 - Password: `customer123456`
 
@@ -129,6 +134,7 @@ curl -X POST https://jtncadrjotvtfmhqixri.supabase.co/auth/v1/token?grant_type=p
 シードスクリプトで以下のデータが投入されています：
 
 #### タグ（14個）
+
 - **住宅タイプ**: 二階建て、平屋
 - **価格帯**: 3000万円台、4000万円台、5000万円以上
 - **構造**: 木造、鉄骨造、RC造
@@ -136,6 +142,7 @@ curl -X POST https://jtncadrjotvtfmhqixri.supabase.co/auth/v1/token?grant_type=p
 - **こだわり**: 自然素材、高断熱・高気密
 
 #### 工務店（3社）
+
 1. **株式会社ナゴヤホーム** (ID: 3) - 公開中
    - 所在地: 愛知県名古屋市中区
    - メンバー: 田中一郎
@@ -151,6 +158,7 @@ curl -X POST https://jtncadrjotvtfmhqixri.supabase.co/auth/v1/token?grant_type=p
    - 施工事例: 1件（下書き）
 
 #### 施工事例（3件）
+
 1. **自然素材にこだわった平屋の家** (ID: 1) - 公開中
    - 工務店: ナゴヤホーム
    - 予算: 3500万円
@@ -165,6 +173,7 @@ curl -X POST https://jtncadrjotvtfmhqixri.supabase.co/auth/v1/token?grant_type=p
    - 工務店: テスト工務店
 
 #### 顧客（2名）
+
 1. **山田花子** (customer1@example.com)
    - 問い合わせ: 1件
 
@@ -172,6 +181,7 @@ curl -X POST https://jtncadrjotvtfmhqixri.supabase.co/auth/v1/token?grant_type=p
    - 問い合わせ: 1件
 
 #### 問い合わせ（2件）
+
 1. 問い合わせID: 1（ナゴヤホームへ）
    - ステータス: 対応中
    - 返信: 1件
@@ -185,24 +195,29 @@ curl -X POST https://jtncadrjotvtfmhqixri.supabase.co/auth/v1/token?grant_type=p
 ## 5. APIエンドポイント一覧
 
 ### パブリックAPI（認証不要）- 4エンドポイント
+
 - `GET /api/public/cases` - 施工事例一覧取得
 - `GET /api/public/cases/:id` - 施工事例詳細取得
 - `GET /api/public/companies` - 工務店一覧取得
 - `GET /api/public/companies/:id` - 工務店詳細取得
 
 ### 顧客API（要認証）- 3エンドポイント
+
 - `POST /api/customer/inquiries` - 問い合わせ送信
 - `GET /api/customer/inquiries` - 問い合わせ一覧取得
 - `GET /api/customer/inquiries/:id` - 問い合わせ詳細取得
 
 ### メンバーAPI（要認証）- 10エンドポイント
+
 #### 問い合わせ管理
+
 - `GET /api/member/inquiries` - 問い合わせ一覧取得
 - `GET /api/member/inquiries/:id` - 問い合わせ詳細取得
 - `PATCH /api/member/inquiries/:id` - 問い合わせステータス更新
 - `POST /api/member/inquiries/:id/reply` - 問い合わせ返信送信
 
 #### 施工事例管理
+
 - `GET /api/member/cases` - 施工事例一覧取得
 - `GET /api/member/cases/:id` - 施工事例詳細取得
 - `POST /api/member/cases` - 施工事例新規作成
@@ -210,10 +225,12 @@ curl -X POST https://jtncadrjotvtfmhqixri.supabase.co/auth/v1/token?grant_type=p
 - `DELETE /api/member/cases/:id` - 施工事例削除
 
 #### 工務店情報管理
+
 - `GET /api/member/company` - 工務店情報取得
 - `PATCH /api/member/company` - 工務店情報更新
 
 ### 管理者API（要認証）- 8エンドポイント
+
 - `GET /api/admin/stats` - ダッシュボード統計取得
 - `GET /api/admin/companies` - 工務店一覧取得
 - `GET /api/admin/companies/:id` - 工務店詳細取得
@@ -233,19 +250,23 @@ curl -X POST https://jtncadrjotvtfmhqixri.supabase.co/auth/v1/token?grant_type=p
 ## 6. トラブルシューティング
 
 ### 401 Unauthorized エラーが出る場合
+
 - 認証トークンが正しく設定されているか確認
 - トークンの有効期限（1時間）が切れていないか確認
 - 再度ログインしてトークンを取得
 
 ### 403 Forbidden エラーが出る場合
+
 - 該当のエンドポイントへのアクセス権限があるか確認
 - 例：メンバーは管理者APIにアクセスできません
 
 ### 404 Not Found エラーが出る場合
+
 - URLが正しいか確認
 - リソースID（施工事例ID、工務店IDなど）が存在するか確認
 
 ### 500 Internal Server Error が出る場合
+
 - サーバーログを確認（VSCodeのターミナル）
 - データベース接続が正常か確認
 - リクエストボディのJSONフォーマットが正しいか確認
@@ -255,12 +276,15 @@ curl -X POST https://jtncadrjotvtfmhqixri.supabase.co/auth/v1/token?grant_type=p
 ## 7. 便利なTips
 
 ### 環境変数の活用
+
 - `base_url` を変更すれば、本番環境でもテスト可能
 - `access_token` は各ユーザータイプ別に変数を作成すると便利
 
 ### レスポンスの検証
+
 - Postmanの「Tests」タブでレスポンスの自動検証スクリプトを作成可能
 - ステータスコードやレスポンスデータの検証を自動化できます
 
 ### コレクション実行の自動化
+
 - Newman（Postmanのコマンドラインツール）を使用すると、CI/CDパイプラインに組み込み可能
