@@ -1,0 +1,266 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Admin {
+  id          Int       @id @default(autoincrement())
+  authId      String    @unique
+  email       String    @unique
+  name        String
+  role        AdminRole @default(ADMIN)
+  isActive    Boolean   @default(true)
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([authId])
+  @@index([email])
+  @@map("admins")
+}
+
+model Company {
+  id              Int                @id @default(autoincrement())
+  name            String
+  description     String?
+  address         String
+  prefecture      String
+  city            String
+  phoneNumber     String
+  email           String             @unique
+  websiteUrl      String?
+  logoUrl         String?
+  mainImageUrl    String?
+  establishedYear Int?
+  employeeCount   Int?
+  businessHours   String?
+  isPublished     Boolean            @default(false)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  tags            CompanyTag[]
+  cases           ConstructionCase[]
+  inquiries       Inquiry[]
+  members         Member[]
+
+  @@index([isPublished])
+  @@index([prefecture])
+  @@map("companies")
+}
+
+model Member {
+  id          Int                @id @default(autoincrement())
+  authId      String             @unique
+  email       String             @unique
+  name        String
+  role        MemberRole         @default(GENERAL)
+  companyId   Int
+  isActive    Boolean            @default(true)
+  lastLoginAt DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  cases       ConstructionCase[]
+  company     Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([authId])
+  @@index([companyId])
+  @@map("members")
+}
+
+model Customer {
+  id          Int       @id @default(autoincrement())
+  authId      String    @unique
+  email       String    @unique
+  lastName    String?
+  firstName   String?
+  phoneNumber String?
+  isActive    Boolean   @default(true)
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  inquiries   Inquiry[]
+
+  @@index([authId])
+  @@map("customers")
+}
+
+model ConstructionCase {
+  id             Int                     @id @default(autoincrement())
+  companyId      Int
+  authorId       Int
+  title          String
+  description    String
+  prefecture     String
+  city           String
+  buildingArea   Float?
+  budget         Int?
+  completionYear Int?
+  mainImageUrl   String?
+  status         PostStatus              @default(DRAFT)
+  viewCount      Int                     @default(0)
+  publishedAt    DateTime?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  images         ConstructionCaseImage[]
+  tags           ConstructionCaseTag[]
+  author         Member                  @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  company        Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([status])
+  @@index([publishedAt])
+  @@map("construction_cases")
+}
+
+model ConstructionCaseImage {
+  id           Int              @id @default(autoincrement())
+  caseId       Int
+  imageUrl     String
+  displayOrder Int              @default(0)
+  createdAt    DateTime         @default(now())
+  case         ConstructionCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+  @@map("construction_case_images")
+}
+
+model Tag {
+  id           Int                   @id @default(autoincrement())
+  name         String                @unique
+  category     TagCategory
+  displayOrder Int                   @default(0)
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  companies    CompanyTag[]
+  cases        ConstructionCaseTag[]
+
+  @@index([category])
+  @@map("tags")
+}
+
+model CompanyTag {
+  id        Int      @id @default(autoincrement())
+  companyId Int
+  tagId     Int
+  createdAt DateTime @default(now())
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, tagId])
+  @@index([companyId])
+  @@index([tagId])
+  @@map("company_tags")
+}
+
+model ConstructionCaseTag {
+  id        Int              @id @default(autoincrement())
+  caseId    Int
+  tagId     Int
+  createdAt DateTime         @default(now())
+  case      ConstructionCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  tag       Tag              @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, tagId])
+  @@index([caseId])
+  @@index([tagId])
+  @@map("construction_case_tags")
+}
+
+model Inquiry {
+  id            Int               @id @default(autoincrement())
+  customerId    Int?
+  inquirerName  String
+  inquirerEmail String
+  inquirerPhone String?
+  companyId     Int
+  message       String
+  status        InquiryStatus     @default(NEW)
+  respondedAt   DateTime?
+  internalNotes String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  company       Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer      Customer?         @relation(fields: [customerId], references: [id])
+  responses     InquiryResponse[]
+
+  @@index([customerId])
+  @@index([companyId])
+  @@index([status])
+  @@map("inquiries")
+}
+
+model InquiryResponse {
+  id         Int      @id @default(autoincrement())
+  inquiryId  Int
+  sender     String
+  senderName String
+  message    String
+  createdAt  DateTime @default(now())
+  inquiry    Inquiry  @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+
+  @@index([inquiryId])
+  @@map("inquiry_responses")
+}
+
+model GeneralInquiry {
+  id            Int                      @id @default(autoincrement())
+  inquirerName  String
+  inquirerEmail String
+  inquirerPhone String?
+  message       String
+  status        InquiryStatus            @default(NEW)
+  respondedAt   DateTime?
+  internalNotes String?
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+  responses     GeneralInquiryResponse[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("general_inquiries")
+}
+
+model GeneralInquiryResponse {
+  id         Int            @id @default(autoincrement())
+  inquiryId  Int
+  sender     String
+  senderName String
+  message    String
+  createdAt  DateTime       @default(now())
+  inquiry    GeneralInquiry @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+
+  @@index([inquiryId])
+  @@map("general_inquiry_responses")
+}
+
+enum MemberRole {
+  ADMIN
+  GENERAL
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+}
+
+enum InquiryStatus {
+  NEW
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum TagCategory {
+  HOUSE_TYPE
+  PRICE_RANGE
+  STRUCTURE
+  ATMOSPHERE
+  PREFERENCE
+}

@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+@layer base {
+  * {
+    border-color: theme("colors.gray.200");
+  }
+  body {
+    background-color: theme("colors.white");
+    color: theme("colors.gray.900");
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .font-poppins {
+    font-family: var(--font-poppins), sans-serif;
+  }
+}
