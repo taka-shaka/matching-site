@@ -16,6 +16,7 @@ const pool =
   globalForPrisma.pool ??
   new Pool({
     connectionString: process.env.DATABASE_URL,
+    max: 1, // Vercelサーバーレス環境では1接続に制限
   });
 
 // Prisma PostgreSQLアダプターの作成
