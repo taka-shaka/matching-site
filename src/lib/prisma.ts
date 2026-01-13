@@ -3,29 +3,14 @@
 // ✅ Prisma 7 + Supabase PostgreSQL 対応
 
 import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
-  pool: Pool | undefined;
 };
-
-// PostgreSQL接続プールの作成（本番環境ではDATA_URLを使用）
-const pool =
-  globalForPrisma.pool ??
-  new Pool({
-    connectionString: process.env.DATABASE_URL,
-    max: 1, // Vercelサーバーレス環境では1接続に制限
-  });
-
-// Prisma PostgreSQLアダプターの作成
-const adapter = new PrismaPg(pool);
 
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
-    adapter,
     log:
       process.env.NODE_ENV === "development"
         ? ["query", "error", "warn"]
@@ -34,7 +19,6 @@ export const prisma =
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
-  globalForPrisma.pool = pool;
 }
 
 export default prisma;
